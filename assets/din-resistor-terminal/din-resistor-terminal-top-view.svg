@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="224" viewBox="0 0 1920 224" role="img" aria-labelledby="terminal-title terminal-description" shape-rendering="geometricPrecision">
+  <title id="terminal-title">DIN resistor terminal — top view</title>
+  <desc id="terminal-description">Flat vector reconstruction of the supplied horizontal DIN terminal assembly, matching the Wirebench module illustration style. Four circular wire openings with square clamps, four orange release units, two oval recesses, and a central component carrier with a brown axial resistor and three visible dark bands. Transparent exterior. The drawing does not assign electrical terminal numbers, resistance, or physical dimensions.</desc>
+  <defs>
+    <g id="wire-opening" stroke-linejoin="round">
+      <path d="M-35 196V155A66 66 0 1 1 35 155V196Z" fill="#666666" stroke="#929292" stroke-width="2.6"/>
+      <circle cy="101" r="58" fill="#303030" stroke="#494949" stroke-width="2.1"/>
+      <path d="M-43 76H43V140H-43Z" fill="#161616" stroke="#252525" stroke-width="2"/>
+      <path d="M-45 75H45L37 85H-37Z" fill="#232323"/>
+      <rect x="-33" y="90" width="66" height="40" rx="1" fill="#545454" stroke="#292929" stroke-width="2.5"/>
+      <path d="M-29 94H29V99H-29Z" fill="#656565"/>
+      <path d="M-29 126H29V130H-29Z" fill="#3d3d3d"/>
+      <path d="M-34 156L-29 166V193H29V166L34 156" fill="#575757"/>
+      <path d="M-35 157V196H35V157" fill="none" stroke="#7c7c7c" stroke-width="1.8"/>
+      <path d="M-53 78A58 58 0 0 1 53 78" fill="none" stroke="#444444" stroke-width="1.4"/>
+    </g>
+    <g id="orange-release" stroke-linejoin="round">
+      <rect width="104" height="124" rx="1" fill="#303030" stroke="#707070" stroke-width="2.4"/>
+      <path d="M7 6H97V118H7Z" fill="#f57a00" stroke="#a9540a" stroke-width="1.8"/>
+      <path d="M32 7H72L64 28V43L69 53V80L64 90V105L71 117H33L40 105V90L35 80V53L40 43V28Z" fill="#e86a00"/>
+      <path d="M8 6H33L42 25V36L34 49Q31 54 31 61V78Q31 86 36 92L42 100V111L35 118H8V103L17 87V37L8 25Z" fill="#ff9417" stroke="#c46a0c" stroke-width="2.2"/>
+      <path d="M96 6H71L62 25V36L70 49Q73 54 73 61V78Q73 86 68 92L62 100V111L69 118H96V103L87 87V37L96 25Z" fill="#ff9417" stroke="#c46a0c" stroke-width="2.2"/>
+      <path d="M10 8H31L37 23H12ZM94 8H73L67 23H92Z" fill="#ffa72d"/>
+      <path d="M10 108H37L33 116H10ZM94 108H67L71 116H94Z" fill="#e8830e"/>
+      <path d="M10 8V24L19 37V88M94 8V24L85 37V88" fill="none" stroke="#ffae35" stroke-width="1.6"/>
+    </g>
+    <g id="oval-recess">
+      <rect x="-27" y="56" width="54" height="99" rx="27" fill="#bebebe" stroke="#919191" stroke-width="2.2"/>
+      <rect x="-20" y="64" width="40" height="84" rx="20" fill="#303030" stroke="#727272" stroke-width="1.8"/>
+      <path d="M-14 130V86Q-14 73 0 73Q14 73 14 86V130Q14 141 0 141Q-14 141-14 130Z" fill="#3d3d3d"/>
+    </g>
+    <path id="resistor-outline" d="M873 74H1052C1070 74 1078 84 1078 99V122C1078 139 1070 147 1052 147H873C856 147 847 138 847 122V99C847 83 856 74 873 74Z"/>
+    <clipPath id="resistor-clip"><use href="#resistor-outline"/></clipPath>
+  </defs>
+
+  <g id="housing" stroke-linejoin="round">
+    <path d="M29 10H1888Q1913 10 1915 34V191Q1913 214 1890 214H28Q5 214 5 192V34Q5 10 29 10Z" fill="#aeaeae" stroke="#626262" stroke-width="2.6"/>
+    <path d="M29 13H1888Q1908 13 1911 33H9Q12 13 29 13Z" fill="#c3c3c3"/>
+    <path d="M8 191H1912Q1909 211 1890 211H28Q11 211 8 191Z" fill="#999999"/>
+    <path d="M9 35V190M1911 35V190" fill="none" stroke="#d1d1d1" stroke-width="1.8"/>
+    <path d="M29 15H1887M31 209H1886" fill="none" stroke="#dadada" stroke-width="1.6"/>
+
+    <g id="central-bridge">
+      <path d="M605 16H1309V206H605Z" fill="#868686" stroke="#707070" stroke-width="2.2"/>
+      <path d="M609 19H1305V59H609Z" fill="#999999"/>
+      <path d="M612 61H1304V188H612Z" fill="#494949" stroke="#737373" stroke-width="2"/>
+      <path d="M612 113H1304V135H612Z" fill="#888888" stroke="#696969" stroke-width="1.8"/>
+      <path d="M612 114H1304" fill="none" stroke="#aaaaaa" stroke-width="1.5"/>
+      <path d="M609 189H1305V205H609Z" fill="#a0a0a0"/>
+      <path d="M611 191H1303" fill="none" stroke="#b9b9b9" stroke-width="1.4"/>
+      <path d="M606 22V57L615 67V184L607 191M1308 22V57L1299 67V184L1307 191" fill="none" stroke="#bdbdbd" stroke-width="2"/>
+    </g>
+
+    <g id="left-terminal-housing">
+      <path d="M46 25H598L606 33V58L618 68V183L607 193V201H44Q36 201 36 193V180H25V53H37V34Q37 25 46 25Z" fill="#b3b3b3" stroke="#949494" stroke-width="2"/>
+      <path d="M47 26H597L604 33V43H47Z" fill="#bdbdbd"/>
+      <path d="M45 188H606V200H45Z" fill="#aaaaaa"/>
+      <path d="M38 50H47V175H38L32 181H15V42H33Z" fill="#969696" stroke="#797979" stroke-width="1.8"/>
+      <path d="M16 42H31L38 50M16 181H32L38 175" fill="none" stroke="#c6c6c6" stroke-width="1.8"/>
+      <path d="M60 19H105V13H607M60 204H105V211H607" fill="none" stroke="#959595" stroke-width="2"/>
+      <path d="M46 28H98M46 198H98" fill="none" stroke="#cecece" stroke-width="1.4"/>
+    </g>
+
+    <g id="right-terminal-housing">
+      <path d="M1874 25H1320L1312 33V58L1300 68V183L1311 193V201H1876Q1884 201 1884 193V180H1895V53H1883V34Q1883 25 1874 25Z" fill="#b3b3b3" stroke="#949494" stroke-width="2"/>
+      <path d="M1873 26H1321L1314 33V43H1873Z" fill="#bdbdbd"/>
+      <path d="M1875 188H1312V200H1875Z" fill="#aaaaaa"/>
+      <path d="M1882 50H1873V175H1882L1888 181H1905V42H1887Z" fill="#969696" stroke="#797979" stroke-width="1.8"/>
+      <path d="M1904 42H1889L1882 50M1904 181H1888L1882 175" fill="none" stroke="#c6c6c6" stroke-width="1.8"/>
+      <path d="M1860 19H1815V13H1312M1860 204H1815V211H1312" fill="none" stroke="#959595" stroke-width="2"/>
+      <path d="M1874 28H1822M1874 198H1822" fill="none" stroke="#cecece" stroke-width="1.4"/>
+    </g>
+  </g>
+
+  <g id="left-terminals">
+    <use href="#wire-opening" x="169" id="left-wire-opening-outer"/>
+    <use href="#orange-release" x="234" y="38"/>
+    <use href="#wire-opening" x="409" id="left-wire-opening-inner"/>
+    <use href="#orange-release" x="472" y="38"/>
+    <use href="#oval-recess" x="593"/>
+  </g>
+  <g id="right-terminals">
+    <use href="#oval-recess" x="1323"/>
+    <use href="#orange-release" x="1352" y="38"/>
+    <use href="#wire-opening" x="1520" id="right-wire-opening-inner"/>
+    <use href="#orange-release" x="1584" y="38"/>
+    <use href="#wire-opening" x="1755" id="right-wire-opening-outer"/>
+  </g>
+
+  <g id="component-carrier" stroke-linejoin="round">
+    <path d="M703 20H1217L1224 28V194L1217 201H703L696 194V28Z" fill="#969696" stroke="#727272" stroke-width="2.3"/>
+    <path d="M702 23H1218V194H702Z" fill="#b7b7b7" stroke="#929292" stroke-width="1.8"/>
+    <path d="M721 29H1199Q1205 29 1205 35V185Q1205 192 1199 192H721Q715 192 715 185V35Q715 29 721 29Z" fill="#b1b1b1" stroke="#606060" stroke-width="2.5"/>
+    <path d="M719 33H1201V44H719Z" fill="#c3c3c3"/>
+    <path d="M719 179H1201V188H719Z" fill="#a3a3a3"/>
+    <path d="M738 57H1182V166H1105V179H815V166H738Z" fill="#363636" stroke="#777777" stroke-width="2.4"/>
+    <path d="M739 57H1181L1170 70H750Z" fill="#696969"/>
+    <path d="M751 71H1169V156H751Z" fill="#414141"/>
+    <path d="M783 73H1137V153H783Z" fill="#494949"/>
+    <path d="M739 166H1181L1168 155H752Z" fill="#737373"/>
+    <path d="M814 166H1106V181H814Z" fill="#bcbcbc" stroke="#7e7e7e" stroke-width="1.8"/>
+    <path d="M820 169H1100" fill="none" stroke="#d0d0d0" stroke-width="1.5"/>
+    <path d="M706 25H724M1196 25H1214M706 196H724M1196 196H1214" fill="none" stroke="#d1d1d1" stroke-width="2.1"/>
+    <path d="M709 34V187M1211 34V187" fill="none" stroke="#848484" stroke-width="1.6"/>
+
+    <g id="resistor-end-clips">
+      <path d="M742 67H767V157H742ZM1153 67H1178V157H1153Z" fill="#202020" stroke="#535353" stroke-width="1.8"/>
+      <path d="M747 72H760V151H747ZM1160 72H1173V151H1160Z" fill="#b9b9b9" stroke="#707070" stroke-width="1.8"/>
+      <path d="M750 75H754V148H750ZM1163 75H1167V148H1163Z" fill="#dddddd"/>
+      <path d="M758 76V147M1171 76V147" fill="none" stroke="#8a8a8a" stroke-width="1.6"/>
+    </g>
+    <g id="resistor-leads" fill="none" stroke-linecap="round">
+      <path d="M758 141V124Q758 110 775 110H850M1075 110H1145Q1162 110 1162 124V141" stroke="#555555" stroke-width="10"/>
+      <path d="M758 140V124Q758 110 775 110H850M1075 110H1145Q1162 110 1162 124V140" stroke="#bcbcbc" stroke-width="6.8"/>
+      <path d="M761 120Q764 107 776 107H848M1077 107H1144Q1158 107 1160 119" stroke="#dfdfdf" stroke-width="2"/>
+    </g>
+    <g id="axial-resistor">
+      <use href="#resistor-outline" fill="#a57950" stroke="#69513a" stroke-width="2.4"/>
+      <path d="M854 92Q857 79 874 79H1051Q1066 79 1072 92L1066 96H860Z" fill="#b78d63"/>
+      <path d="M851 125Q851 143 874 143H1052Q1074 143 1075 125L1067 130H860Z" fill="#8d643f"/>
+      <path d="M852 99V120M1073 99V120" fill="none" stroke="#b18559" stroke-width="2"/>
+      <g id="visible-resistor-bands" clip-path="url(#resistor-clip)">
+        <path d="M911 73H924V148H911Z" fill="#30251f"/>
+        <path d="M947 73H961V148H947Z" fill="#61392a"/>
+        <path d="M980 73H993V148H980Z" fill="#30251f"/>
+        <path d="M911 79H924V88H911ZM980 79H993V88H980Z" fill="#3c2f26"/>
+        <path d="M947 79H961V88H947Z" fill="#714532"/>
+      </g>
+    </g>
+  </g>
+</svg>

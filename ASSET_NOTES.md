@@ -34,4 +34,9 @@ Portable copies of the DQ/AI RTD and AQ/Ex-AI SVG reconstruction scripts are in 
 
 ## Standalone DIN resistor terminal
 
-`assets/din-resistor-terminal/` contains the SVG and transparent PNG made from the cabinet photograph. The resistor value and complete manufacturer part number are unconfirmed. No channel mapping has been assigned, and this artwork has not yet been integrated as an editor module.
+`assets/din-resistor-terminal/` contains two standalone illustrations, each supplied as an editable SVG and a transparent PNG:
+
+- `din-resistor-terminal-top-view`: the horizontal assembly reconstructed from the clear reference in `docs/references/din-resistor-terminal-top-view.png`, with four wire openings, four orange releases, two oval recesses, and the central three-banded resistor. The SVG uses a 1920 × 224 viewBox and the PNG is 3840 × 448 px.
+- `din-resistor-terminal-block`: the earlier vertical front view reconstructed from the cabinet photograph.
+
+Both use flat vector shapes with transparent exteriors. The resistor value and complete manufacturer part number are unconfirmed. No channel mapping has been assigned, and this artwork has not yet been integrated as an editor module.

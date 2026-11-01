@@ -3,7 +3,7 @@ import { routeWithPreferences } from './independent-routing.js';
 import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from './schedule.js';
 import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigation.js';
 import { captureManualRoute, moveWireSegment } from './manual-routing.js';
-import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, normalizeProject, boundsOf } from './model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, normalizeProject, boundsOf } from './model.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), stage = $('#stage');
@@ -85,6 +85,11 @@ function redo() {
 }
 function clearSelection() { selected.clear(); selectedWire = null; selectedSegmentIndex = null; pendingPort = null; snapTarget = null; }
 function nodeById(id) { return project.nodes.find(n => n.id === id); }
+function moduleCaption(n, includeType = false) {
+  const typeLabel = MODULE_TYPES[n.type]?.label || n.type;
+  const name = n.name || typeLabel;
+  return [n.rio, n.slot !== '' ? `Slot ${n.slot}` : name, includeType && (n.slot !== '' || name !== typeLabel) ? typeLabel : ''].filter(Boolean).join(' · ');
+}
 function selectedNode() { return selected.size === 1 ? nodeById([...selected][0]) : null; }
 function occupied(id, ignoreWire) { return project.wires.find(w => w.id !== ignoreWire && (w.from === id || w.to === id)); }
 function world(event) { const r = canvas.getBoundingClientRect(); return { x: view.x + (event.clientX - r.left) / view.zoom, y: view.y + (event.clientY - r.top) / view.zoom }; }
@@ -140,10 +145,10 @@ function renderNavigation() {
   if (selectedModuleId) focusedModuleId = selectedModuleId;
   if (!modules.some(n => n.id === focusedModuleId)) focusedModuleId = '';
   const select = $('#slot-jump');
-  select.innerHTML = '<option value="">All slots · overview</option>' + modules.map(n => `<option value="${esc(n.id)}">${esc([n.rio, n.slot !== '' ? `Slot ${n.slot}` : n.name, MODULE_TYPES[n.type].label].filter(Boolean).join(' · '))}</option>`).join('');
+  select.innerHTML = '<option value="">All modules · overview</option>' + modules.map(n => `<option value="${esc(n.id)}">${esc(moduleCaption(n, true))}</option>`).join('');
   select.value = focusedModuleId;
   $('#slot-summary').textContent = project.sourceSchedule === 'rio-schedule-v1' ? `${SCHEDULE_SUMMARY.slots} slots · ${SCHEDULE_SUMMARY.channels} source channels · ${SCHEDULE_SUMMARY.assigned} assigned · ${SCHEDULE_SUMMARY.spare} spare` : `${modules.length} module${modules.length === 1 ? '' : 's'} · editable diagram`;
-  $('#device-list-scope').textContent = focusedModuleId ? 'Current slot' : 'All devices';
+  $('#device-list-scope').textContent = focusedModuleId ? 'Current module' : 'All devices';
 }
 
 function setupGrid() {
@@ -171,13 +176,27 @@ portLabelMeasure.font = '14px Arial';
 
 function moduleMarkup(n, exporting = false, embedded = {}) {
   const t = MODULE_TYPES[n.type], b = t.body;
+  const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
+  const headerCenterY = header.y + header.height / 2;
   const instance = [n.rio, n.slot !== '' ? `Slot ${n.slot}` : ''].filter(Boolean).join(' · ');
   const selectedClass = !exporting && selected.has(n.id) ? 'is-selected' : '';
   let out = `<g class="module-node ${selectedClass}" ${exporting ? '' : `data-node="${esc(n.id)}"`} transform="translate(${n.x} ${n.y})">`;
-  if (!exporting) out += `<rect class="selection-ring" x="-8" y="-42" width="${t.width + 16}" height="${t.height + 50}" rx="12" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" opacity="${selectedClass ? 1 : 0}" pointer-events="none"/>`;
-  out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><rect x="0" y="-34" width="${t.width}" height="32" rx="7" fill="#ffffff" stroke="#e2e8ed"/><rect x="10" y="-24" width="5" height="12" rx="2" fill="#0d9488"/><text x="24" y="-13" fill="#20303d" font-size="13" font-weight="700">${esc(n.name || t.label)}</text><text class="module-instance" x="${t.width - 10}" y="-13" text-anchor="end" fill="#20303d" font-size="16" font-weight="700">${esc(instance)}</text></g>`;
+  const selectionTop = Math.min(0, header.y) - 8;
+  if (!exporting) out += `<rect class="selection-ring" x="-8" y="${selectionTop}" width="${t.width + 16}" height="${Math.max(t.height, header.y + header.height) - selectionTop + 8}" rx="12" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" opacity="${selectedClass ? 1 : 0}" pointer-events="none"/>`;
   out += `<image href="${esc(embedded[n.type] || t.image)}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" preserveAspectRatio="none" ${exporting ? '' : 'data-drag-handle="true"'} />`;
+  out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + 5}" fill="#20303d" font-size="13" font-weight="700">${esc(n.name || t.label)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + 5}" text-anchor="end" fill="#20303d" font-size="16" font-weight="700">${esc(instance)}</text></g>`;
   for (const p of t.ports) {
+    if (p.side === 'top' || p.side === 'bottom') {
+      const top = p.side === 'top';
+      const targetX = p.pinX ?? p.x, targetY = p.pinY ?? p.y;
+      const startX = p.x, startY = p.y + (top ? 34 : -34);
+      const dx = targetX - startX, dy = targetY - startY, length = Math.hypot(dx, dy);
+      const ux = dx / length, uy = dy / length;
+      const baseX = targetX - ux * 10, baseY = targetY - uy * 10;
+      out += `<text class="port-label" x="${p.x}" y="${p.y + (top ? 22 : -14)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#263947">${esc(p.label)}</text><path class="port-arrow" d="M${startX} ${startY} L${baseX} ${baseY}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/><path class="port-arrowhead" d="M${targetX} ${targetY} L${baseX - uy * 5} ${baseY + ux * 5} L${baseX + uy * 5} ${baseY - ux * 5} Z" fill="#dc2626"/>`;
+      out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
+      continue;
+    }
     const left = p.side === 'left';
     const px = p.x + (left ? 13 : -13);
     const label = p.label;
@@ -289,10 +308,19 @@ function editPort(p) {
   if (!p) return null;
   const grid = project.settings.grid, gap = Math.max(10, grid);
   const widest = project.wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
-  const padding = Math.max(gap / 2, widest / 2 + 2), left = p.side === 'left';
+  const padding = Math.max(gap / 2, widest / 2 + 2);
+  const vertical = p.side === 'top' || p.side === 'bottom';
+  const negative = p.side === 'left' || p.side === 'top';
+  const axis = vertical ? 'y' : 'x', dimension = vertical ? 'height' : 'width';
   const owners = geo.obstacles.filter(r => r.nodeId === p.nodeId);
-  const boundary = owners.length ? (left ? Math.min(p.x, ...owners.map(r => r.x - padding)) : Math.max(p.x, ...owners.map(r => r.x + r.width + padding))) : p.x + (left ? -grid / 2 : grid / 2);
-  return { ...p, escapeX: (left ? Math.floor((boundary - .000001) / grid) : Math.ceil((boundary + .000001) / grid)) * grid };
+  const boundary = owners.length ? (negative ? Math.min(p[axis], ...owners.map(r => r[axis] - padding)) : Math.max(p[axis], ...owners.map(r => r[axis] + r[dimension] + padding))) : p[axis] + (negative ? -grid / 2 : grid / 2);
+  return { ...p, [vertical ? 'escapeY' : 'escapeX']: (negative ? Math.floor((boundary - .000001) / grid) : Math.ceil((boundary + .000001) / grid)) * grid };
+}
+
+function portStub(p, distance = 22) {
+  const vertical = p.side === 'top' || p.side === 'bottom';
+  const sign = p.side === 'left' || p.side === 'top' ? -1 : 1;
+  return `M${p.x} ${p.y} ${vertical ? 'v' : 'h'}${sign * distance}`;
 }
 function segmentOptions(w) {
   return { grid: project.settings.grid, snap: project.settings.snap, gap: Math.max(10, project.settings.grid), from: editPort(geo.ports[w.from]), to: editPort(geo.ports[w.to]) };
@@ -340,7 +368,7 @@ function wireMarkup(w, exporting = false, visibleWireIds = null) {
   if (!r || !from || !to) return '';
   if (!r.points?.length) {
     if (exporting) return '';
-    return `<g data-wire="${esc(w.id)}" role="button" tabindex="0" aria-label="${esc(from.name + ' to ' + to.name + ' · route blocked')}"><path d="M${from.x} ${from.y} h${from.side === 'left' ? -22 : 22} M${to.x} ${to.y} h${to.side === 'left' ? -22 : 22}" stroke="#db6657" stroke-width="3" stroke-dasharray="4 3" fill="none"/><title>Route blocked — move items apart or auto-route this wire</title></g>`;
+    return `<g data-wire="${esc(w.id)}" role="button" tabindex="0" aria-label="${esc(from.name + ' to ' + to.name + ' · route blocked')}"><path d="${portStub(from)} ${portStub(to)}" stroke="#db6657" stroke-width="3" stroke-dasharray="4 3" fill="none"/><title>Route blocked — move items apart or auto-route this wire</title></g>`;
   }
   const crossings = visibleWireIds ? (r.crossings || []).filter(c => visibleWireIds.has(c.otherWireId)) : r.crossings;
   const d = routePath(r.points, crossings), color = safeColor(w.color), white = color.toLowerCase() === '#ffffff';
@@ -434,8 +462,17 @@ function renderOverlay() {
   }
   if (pendingPort && pointer && geo.ports[pendingPort]) {
     const start = geo.ports[pendingPort], target = snapTarget ? geo.ports[snapTarget] : pointer;
-    const stubX = start.x + (start.side === 'left' ? -30 : 30);
-    html += `<path d="M${start.x} ${start.y} H${stubX} V${target.y} H${target.x}" fill="none" stroke="${start.color || '#0d9488'}" stroke-width="2.5" stroke-dasharray="6 4" pointer-events="none"/>`;
+    const vertical = start.side === 'top' || start.side === 'bottom';
+    const stub = (vertical ? start.y : start.x) + (start.side === 'left' || start.side === 'top' ? -30 : 30);
+    let preview = vertical ? `M${start.x} ${start.y} V${stub} H${target.x} V${target.y}` : `M${start.x} ${start.y} H${stub} V${target.y} H${target.x}`;
+    if (snapTarget) {
+      const targetVertical = target.side === 'top' || target.side === 'bottom';
+      const targetSign = target.side === 'left' || target.side === 'top' ? -1 : 1;
+      const end = { x: target.x + (targetVertical ? 0 : targetSign * 30), y: target.y + (targetVertical ? targetSign * 30 : 0) };
+      preview = vertical ? `M${start.x} ${start.y} V${stub} H${end.x} V${end.y}` : `M${start.x} ${start.y} H${stub} V${end.y} H${end.x}`;
+      preview += ` L${target.x} ${target.y}`;
+    }
+    html += `<path d="${preview}" fill="none" stroke="${start.color || '#0d9488'}" stroke-width="2.5" stroke-dasharray="6 4" pointer-events="none"/>`;
     if (snapTarget) html += `<circle cx="${target.x}" cy="${target.y}" r="12" fill="#0d9488" fill-opacity=".12" stroke="#0d9488" stroke-width="1.5" pointer-events="none"/>`;
   }
   if (gesture?.kind === 'marquee' && pointer) {
@@ -465,12 +502,20 @@ function assignmentMarkup(n) {
 function moduleChannelsMarkup(n) {
   const source = RIO_SCHEDULE.find(s => s.id === n.scheduleId), t = MODULE_TYPES[n.type];
   const channels = [...new Set(t.ports.map(p => p.channel).filter(c => c !== null))].sort((a, b) => a - b);
+  if (t.connectorRole === 'terminal') {
+    return `<section class="channel-schedule"><h3>Connector status</h3>${channels.map(channel => {
+      const state = side => occupied(`${n.id}:${side}-${channel + 1}`) ? 'Connected' : 'Free';
+      return `<div class="channel-row"><span class="channel-number">${channel + 1}</span><span><strong>Terminal ${channel + 1}</strong><small>Top: ${state('top')} · Bottom: ${state('bottom')}</small></span></div>`;
+    }).join('')}</section>`;
+  }
   return `<section class="channel-schedule"><h3>Channel assignments</h3>${channels.map(channel => {
     const original = source?.channels.find(c => c.channel === channel);
     const assigned = project.nodes.find(d => d.kind === 'device' && d.assignment?.moduleId === n.id && d.assignment.channel === channel);
-    const wire = project.wires.find(w => w.to.startsWith(n.id + ':') && geo.ports[w.to]?.channel === channel);
-    const device = assigned || (wire && nodeById(wire.from.split(':')[0]));
-    const label = `<span class="channel-number">CH${channel}</span><span><strong>${esc(device?.name || 'Spare')}</strong>${device ? `<small>Cable ${esc(device.cable || '—')}</small>` : '<small>No device assigned</small>'}${original ? `<code>${esc(original.tag)}</code>` : ''}</span>`;
+    const wire = project.wires.find(w => [w.from, w.to].some(id => id.startsWith(n.id + ':') && geo.ports[id]?.channel === channel));
+    const opposite = wire && (wire.from.startsWith(n.id + ':') ? wire.to : wire.from);
+    const device = assigned || (opposite && nodeById(opposite.split(':')[0]));
+    const detail = device?.kind === 'module' ? 'Connected module' : `Cable ${esc(device?.cable || '—')}`;
+    const label = `<span class="channel-number">CH${channel}</span><span><strong>${esc(device?.name || 'Spare')}</strong>${device ? `<small>${detail}</small>` : '<small>No device assigned</small>'}${original ? `<code>${esc(original.tag)}</code>` : ''}</span>`;
     return device ? `<button class="channel-row" data-select-node="${esc(device.id)}">${label}</button>` : `<div class="channel-row is-spare">${label}</div>`;
   }).join('')}${source?.typeInferred ? `<p class="source-note">The sheet labels this module AI. The ${esc(t.label)} artwork is selected from your references using its channel count${source.channels.some(c => c.device) ? ' and device names' : ''}.</p>` : ''}</section>`;
 }
@@ -481,7 +526,9 @@ function renderInspector() {
   commitTextEdit();
   const root = $('#inspector-content'), n = selectedNode(), w = project.wires.find(w => w.id === selectedWire);
   if (pendingPort && geo.ports[pendingPort]) {
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTING</span><h2>Choose a terminal</h2><p>${esc(geo.ports[pendingPort].name)}</p></div><div class="instruction-card">Click a ${geo.ports[pendingPort].kind === 'device' ? 'channel port on a module' : 'conductor dot on a device'} to finish the wire. A teal ring appears when it snaps into place.</div><button class="secondary full-width" data-action="cancel-wire">Cancel connection <kbd>Esc</kbd></button>`; return;
+    const start = geo.ports[pendingPort];
+    const destination = start.kind === 'device' ? 'module terminal' : start.connectorRole === 'terminal' ? 'device conductor or a terminal on another module' : 'device conductor or a DIN terminal';
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTING</span><h2>Choose a terminal</h2><p>${esc(start.name)}</p></div><div class="instruction-card">Click a ${destination} to finish the wire. A teal ring appears when it snaps into place.</div><button class="secondary full-width" data-action="cancel-wire">Cancel connection <kbd>Esc</kbd></button>`; return;
   }
   if (w) {
     const a = geo.ports[w.from], b = geo.ports[w.to], r = routing.routes[w.id];
@@ -507,7 +554,7 @@ function nearestPort(pos) {
   if (!pendingPort || !geo.ports[pendingPort]) return null;
   const first = geo.ports[pendingPort]; let best = null, distance = 22 / view.zoom;
   for (const p of Object.values(geo.ports)) {
-    if (p.kind === first.kind || p.id === first.id) continue;
+    if (!compatiblePorts(first, p)) continue;
     const d = Math.hypot(pos.x - p.x, pos.y - p.y);
     if (d < distance) { best = p.id; distance = d; }
   }
@@ -522,14 +569,14 @@ function finishWire(id) {
   const first = geo.ports[pendingPort], last = geo.ports[id];
   if (!first || !last) return false;
   if (first.id === last.id) { cancelWire(); return false; }
-  if (first.kind === last.kind) { notify('Connect a device conductor to a module channel.', true); return false; }
-  const from = first.kind === 'device' ? first : last, to = first.kind === 'module' ? first : last;
-  const previous = project.wires.find(w => w.from === from.id), taken = occupied(to.id, previous?.id);
-  if (taken && !to.allowMultiple && !to.common) { notify('That channel terminal is occupied. Select its wire to reconnect or delete it.', true); return false; }
+  if (!compatiblePorts(first, last)) { notify('Connect a device to a module, or connect a DIN terminal to another module.', true); return false; }
+  const from = last.kind === 'device' ? last : first, to = last.kind === 'device' ? first : last;
+  const previous = occupied(from.id), taken = occupied(to.id, previous?.id);
+  if (taken && !to.allowMultiple && !to.common) { notify('That terminal is occupied. Select its wire to reconnect or delete it.', true); return false; }
   const idNew = previous?.id || makeId('wire');
   change(() => {
-    if (previous) { previous.to = to.id; delete previous.manual; delete previous.savedRoute; }
-    else project.wires.push({ id: idNew, from: from.id, to: to.id, color: from.color, width: project.settings.defaultWidth });
+    if (previous) { previous.from = from.id; previous.to = to.id; delete previous.manual; delete previous.savedRoute; }
+    else project.wires.push({ id: idNew, from: from.id, to: to.id, color: safeColor(from.color || to.color), width: project.settings.defaultWidth });
     pendingPort = null; snapTarget = null; selectedWire = idNew;
   }, `${from.name} connected to ${to.name}`, { rerouteIds: [idNew] });
   return true;
@@ -684,9 +731,10 @@ canvas.addEventListener('wheel', event => { event.preventDefault(); if (['resize
 canvas.addEventListener('dblclick', event => { if (event.target.closest('[data-resize]')) return; const n = event.target.closest('[data-node]'); if (n) { selected = new Set([n.dataset.node]); selectedWire = null; renderInspector(); const input = $('[data-prop="name"]'); input?.focus(); input?.select(); } });
 
 function findFreePosition(node, desired) {
-  const w = node.kind === 'module' ? MODULE_TYPES[node.type].width : deviceWidth(node);
-  const h = node.kind === 'module' ? MODULE_TYPES[node.type].height + 36 : deviceHeight(node);
-  const top = node.kind === 'module' ? 36 : 0;
+  const type = node.kind === 'module' ? MODULE_TYPES[node.type] : null;
+  const w = type ? type.width : deviceWidth(node);
+  const top = type ? Math.max(0, -(type.header?.y ?? -36)) : 0;
+  const h = type ? Math.max(type.height, type.header ? type.header.y + type.header.height : 0) + top : deviceHeight(node);
   const obstacles = geometry(project.nodes, MODULE_TYPES).obstacles;
   const free = (x, y) => obstacles.every(r => x + w + 45 < r.x || x - 45 > r.x + r.width || y - top + h + 45 < r.y || y - top - 45 > r.y + r.height);
   const candidates = [];
@@ -859,7 +907,7 @@ async function exportPNG() {
     const scale = Number($('#export-scale').value) || 2;
     const b = boundsOf(exportNodes, MODULE_TYPES, exportRoutes), titleHeight = title ? 42 : 0;
     const scopeModule = scope === 'all' ? null : nodeById(scope);
-    const exportTitle = scopeModule ? `${scopeModule.rio} · Slot ${scopeModule.slot}` : project.title;
+    const exportTitle = scopeModule ? moduleCaption(scopeModule) : project.title;
     const width = Math.ceil(b.width + 2 * margin), height = Math.ceil(b.height + 2 * margin + titleHeight);
     const actualScale = Math.min(scale, 12000 / width, 12000 / height, Math.sqrt(48000000 / (width * height)));
     const x = b.x - margin, y = b.y - margin - titleHeight;
@@ -909,9 +957,9 @@ const actions = {
   'export-png': () => {
     if (!project.nodes.length) return notify('Add something to the canvas first.');
     const n = nodeById(focusedModuleId);
-    $('#export-scope').innerHTML = '<option value="all">Entire diagram</option>' + (n ? `<option value="${esc(n.id)}">Current slot · ${esc(n.rio)} · Slot ${esc(n.slot)}</option>` : '');
+    $('#export-scope').innerHTML = '<option value="all">Entire diagram</option>' + (n ? `<option value="${esc(n.id)}">Current module · ${esc(moduleCaption(n))}</option>` : '');
     $('#export-scope').value = n ? n.id : 'all';
-    $('#export-info').textContent = 'Choose one slot for a detailed drawing, or the entire diagram for all channels.';
+    $('#export-info').textContent = 'Choose the current module and its connections, or export the entire diagram.';
     $('#export-dialog').showModal();
   },
   'confirm-export': exportPNG, 'cancel-export': () => { exportEpoch++; $('#export-dialog').close(); }, help: () => $('#help-dialog').showModal(), 'close-help': () => $('#help-dialog').close()

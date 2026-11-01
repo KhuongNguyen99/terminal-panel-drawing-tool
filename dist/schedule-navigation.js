@@ -21,7 +21,7 @@ export function scheduleModuleIdForNode(node, project) {
   return connected.size === 1 ? connected.values().next().value : null;
 }
 
-/** Module first, then its assigned or directly connected devices in project order. */
+/** Module first, then its assigned devices and directly wired items in project order. */
 export function focusNodesForModule(moduleId, project) {
   const nodes = project?.nodes || [];
   const module = nodes.find(n => n.kind === 'module' && n.id === moduleId);
@@ -34,8 +34,9 @@ export function focusNodesForModule(moduleId, project) {
   }
   const result = [module], included = new Set([moduleId]);
   for (const node of nodes) {
-    if (node.kind !== 'device' || included.has(node.id)) continue;
-    if (node.assignment?.moduleId !== moduleId && !connected.has(node.id)) continue;
+    if (included.has(node.id)) continue;
+    const assigned = node.kind === 'device' && node.assignment?.moduleId === moduleId;
+    if (!assigned && !connected.has(node.id)) continue;
     result.push(node); included.add(node.id);
   }
   return result;

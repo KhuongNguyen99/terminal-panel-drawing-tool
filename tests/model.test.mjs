@@ -17,19 +17,23 @@ test('editable project survives JSON save/reopen without changing its normalized
   assert.equal(reopened.wires[0].to, 'module-1:ch0-minus');
 });
 
-test('every module port connects at the outside edge of its channel labels', () => {
+test('every module port uses its template geometry at the outside of its channel label', () => {
   for (const [type, template] of Object.entries(MODULE_TYPES)) {
     const n = module({ type, x: 120, y: -80 });
     const { ports, obstacles } = geometry([n], MODULE_TYPES);
     assert.equal(Object.keys(ports).length, template.ports.length);
     for (const p of Object.values(ports)) {
-      assert.equal(p.x, n.x + (p.side === 'left' ? 60 : template.width - 60), `${type} ${p.localId} outside channel label`);
-      assert.equal(p.y, n.y + template.ports.find(local => local.id === p.localId).y);
+      const local = template.ports.find(local => local.id === p.localId);
+      assert.equal(p.x, n.x + local.x, `${type} ${p.localId} outside channel label`);
+      assert.equal(p.y, n.y + local.y);
+      if (['left', 'right'].includes(p.side)) assert.equal(local.x, p.side === 'left' ? 60 : template.width - 60);
       assert.equal(p.kind, 'module');
       assert.equal(p.nodeId, n.id);
     }
-    assert.ok(obstacles[0].y < n.y, 'module title is inside routing obstacle');
-    assert.equal(obstacles[0].width, template.width);
+    if (!template.routingObstacles) {
+      assert.ok(obstacles[0].y < n.y, 'module title is inside routing obstacle');
+      assert.equal(obstacles[0].width, template.width);
+    }
   }
 });
 

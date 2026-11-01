@@ -1,6 +1,6 @@
 # Wirebench
 
-A browser-based wiring editor built from the supplied DQ, AI, AI RTD, AQ, and Ex-AI module references. No backend or third-party browser libraries are required.
+A browser-based wiring editor built from the supplied DQ, AI, AI RTD, AQ, Ex-AI, and DIN resistor terminal references. No backend or third-party browser libraries are required.
 
 ## Run locally
 
@@ -28,16 +28,16 @@ Run the existing checks with `npm test`. For hosting, serve the contents of `dis
 - `ASSET_NOTES.md`: artwork provenance and channel geometry.
 - `.openai/hosting.json`: configuration for the existing Wirebench Site.
 
-The DIN resistor terminal is supplied as standalone artwork; it has not yet been added as a connectable module in the editor. Its illustration is based on the supplied cabinet photo and does not establish an exact manufacturer part number or resistor value.
+**DIN Resistor Rail Terminal Block** is available in the module library. It uses the approved flat image of ten upright terminals with exactly 20 connection points: **Top 1–10** and **Bottom 1–10**, numbered left to right. Either row can connect to cable conductors or another module. The two rows are neutral connector identifiers; they do not assign polarity or a resistor value. The earlier standalone single-terminal SVGs remain in `assets/din-resistor-terminal/`.
 
 Browser autosaves are stored on each browser and origin. This repository includes the default populated schedule; to transfer later personal edits between the hosted app and a local copy, use **Save project**, then **Open** the resulting `.wirebench.json` file.
 
 ## Using the editor
 
-1. Add an I/O module and a 2-wire or 4-wire device from the library.
+1. Add an I/O module or DIN resistor terminal block and a 2-wire or 4-wire cable from the library.
 2. Select a device to edit its name and cable number, put the number on either side, or change which edge its wires leave from.
    Set its **Width** and **Height** in Properties, or drag its right, bottom, or bottom-right resize handle. Dragging follows the grid when Snap is on. Names reflow inside the resized label, conductors follow its edges, and connected wire endpoints follow the label. **Reset size** restores the original dimensions. Custom sizes are saved in the editable project and used in PNG exports.
-3. Click a device conductor, then a module channel port. Dragging from a conductor to a port also works. Ports snap at the outside of the channel labels.
+3. Click a device conductor, then a module channel port. Dragging from a conductor to a port also works. Ports snap at the outside of the channel labels. DIN connectors also accept wires from other I/O modules or terminal blocks; their wires leave upward or downward from the corresponding row.
 4. Move modules and devices on the canvas. **Auto-route is off by default**: existing paths stay fixed, and only wires attached to a moved component update their endpoints. New connections receive an initial path around fixed wires and component rectangles. Bridges distinguish crossings.
 5. Click a wire to change its color or thickness, reconnect it, or delete it. Changing a device conductor's color updates its connected wire.
    Drag any wire segment or its square handle to move that section perpendicular to its direction. Horizontal sections move up/down; vertical sections move left/right. The wire inspector also provides a segment selector and exact X/Y position. Arrow keys nudge a focused segment handle; Shift moves five steps. Snap uses the canvas grid. End sections add bends to keep their ports attached. Each move is one undo step; Escape cancels a drag. Manual routes persist through save/open and export, and moving a component updates its wire endpoints. Moving a segment always keeps every other wire path fixed, including when live auto-routing is enabled. A position that would block a connection or overlap a component is rejected. **Auto-route this wire** finds a new path for only the selected connection. **Auto-route all** replaces every path, including manual edits, in one undoable step. Turn on the **Auto-route** checkbox for automatic recalculation while arranging components; manually edited wires remain fixed. Turn it off to freeze the current layout again. Moving an obstruction over a fixed path keeps that path visible with a warning so you can adjust it.
@@ -74,7 +74,7 @@ The deterministic Manhattan router avoids component rectangles, reserved termina
 
 The app is a manual diagram editor. It preserves the channel labels in the supplied references and does not infer electrical compatibility or signal assignments from wire colors. A module channel accepts one conductor. DQ exposes the single shared 0 V connection area shown in the source image; it does not invent individual common terminal numbers or an unshown shared-ground bus.
 
-Module image provenance and reconstruction details are in `ASSET_NOTES.md`. All five module front views use scalable SVG artwork for sharp zoom and PNG export. The channel labels sit close to the module body, and bold red callout arrows point to the original circular terminal coordinates. The original raster crops are retained as source references.
+Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork; the DIN terminal bank uses the approved 2384 × 2055 transparent PNG. Bold red callout arrows point to the circular terminal coordinates. The DIN title sits in the space above the resistor carriers so the top and bottom wire paths remain clear. All artwork is embedded into exported PNGs.
 
 ## Source
 

@@ -39,4 +39,12 @@ Portable copies of the DQ/AI RTD and AQ/Ex-AI SVG reconstruction scripts are in 
 - `din-resistor-terminal-top-view`: the horizontal assembly reconstructed from the clear reference in `docs/references/din-resistor-terminal-top-view.png`, with four wire openings, four orange releases, two oval recesses, and the central three-banded resistor. The SVG uses a 1920 × 224 viewBox and the PNG is 3840 × 448 px.
 - `din-resistor-terminal-block`: the earlier vertical front view reconstructed from the cabinet photograph.
 
-Both use flat vector shapes with transparent exteriors. The resistor value and complete manufacturer part number are unconfirmed. No channel mapping has been assigned, and this artwork has not yet been integrated as an editor module.
+Both single-terminal assets use flat vector shapes with transparent exteriors. They remain separate from the connected ten-terminal bank in the editor.
+
+## DIN Resistor Rail Terminal Block
+
+`dist/assets/module-din-resistor.png` is the approved 2384 × 2055 transparent bank image. It contains ten pixel-identical copies of the approved flat terminal illustration, rotated upright. The `DIN_RESISTOR` editor template uses a 640 × 650 node with proportional artwork and exactly two external connector rows: Top 1–10 and Bottom 1–10, both numbered left to right. The additional physical openings within the image are not exposed as extra connection rows.
+
+The module artwork scale is 60/232, matching its 232-pixel column pitch to a 60-unit connector pitch. External connector dots are at x=50+60i and y=0/650. Red arrows aim at the outer circular openings: source x≈162+232i, top y≈194.5 and bottom y≈1859.2. The title occupies the blank bridge above the resistor carriers, keeping both wire escape directions clear. The PNG is embedded into exports without an opaque background.
+
+Connections can run from either row to a cable conductor or to another module. These are neutral terminal identifiers; the editor does not infer polarity, internal circuit behavior, or a resistor value from the artwork.

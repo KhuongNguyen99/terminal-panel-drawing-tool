@@ -66,3 +66,12 @@ test('focusing preserves imported dimensions and object identity without mutatin
   for (const node of project.nodes) scheduleModuleIdForNode(node, project);
   assert.deepEqual(project, before);
 });
+
+test('focused exports include directly connected DIN and I/O modules without expanding the whole network', () => {
+  const project = fixture();
+  project.nodes.push({ id: 'din', kind: 'module', type: 'DIN_RESISTOR' });
+  project.wires.push({ from: 'module-a:ch0-minus', to: 'din:top-1' });
+  project.wires.push({ from: 'din:bottom-1', to: 'module-b:ch0-plus' });
+  assert.deepEqual(focusNodesForModule('module-a', project).map(n => n.id), ['module-a', 'assigned', 'wired', 'both', 'din']);
+  assert.deepEqual(focusNodesForModule('din', project).map(n => n.id), ['din', 'module-a', 'module-b']);
+});

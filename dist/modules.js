@@ -1,6 +1,6 @@
 /**
  * Module geometry transcribed from the user's annotated reference images.
- * Coordinates are local to a 360 x 500 editor node. Wire connections land on
+ * I/O coordinates are local to a 360 x 500 editor node. Wire connections land on
  * the OUTSIDE of the channel labels, inset toward the module body.
  * `pinY` is the exact photo contact location for the internal callout arrow.
  */
@@ -35,11 +35,12 @@ function port(channel, signal, side, y, options = {}) {
   });
 }
 
-function template(key, label, subtitle, image, body, ports, description) {
+function template(key, label, subtitle, image, body, ports, description, options = {}) {
   return Object.freeze({
     key, label, subtitle, image, width: WIDTH, height: HEIGHT,
     body, ports: Object.freeze(ports), description,
     imageAlt: `${label} module from the supplied wiring reference`,
+    ...options,
   });
 }
 
@@ -110,6 +111,25 @@ for (const side of ['left', 'right']) {
   exPorts.push(port(channel, '+', side, 360, { pinY: 459 * IMAGE_HEIGHT / 607 }));
 }
 
+// The approved ten-terminal image is 2384 × 2055 px. Its columns are 232 px
+// apart; scaling that pitch to 60 editor units keeps the connection dots on
+// the grid without stretching the artwork. The outermost circular openings
+// supply the single exposed connector row requested at each end of the bank.
+const dinScale = 60 / 232;
+const dinBody = Object.freeze({
+  x: (640 - 2384 * dinScale) / 2, y: 60,
+  w: 2384 * dinScale, h: 2055 * dinScale,
+});
+const dinPorts = ['top', 'bottom'].flatMap(side => Array.from({ length: 10 }, (_, channel) => Object.freeze({
+  id: `${side}-${channel + 1}`,
+  label: `${side === 'top' ? 'Top' : 'Bottom'} ${channel + 1}`,
+  side, channel, signal: side,
+  x: 50 + channel * 60, y: side === 'top' ? 0 : 650,
+  pinX: dinBody.x + (162 + channel * 232) * dinScale,
+  pinY: dinBody.y + (side === 'top' ? 194.5 : 1859.2) * dinScale,
+  group: side === 'top' ? 'Top row' : 'Bottom row',
+})));
+
 export const MODULE_TYPES = Object.freeze({
   DQ: template('DQ', 'DQ', '8 × 24 V DC / 0.5 A', 'assets/module-dq.svg', dqBody, dqPorts,
     'Eight digital outputs and the shared 0 V area shown in your reference.'),
@@ -121,6 +141,13 @@ export const MODULE_TYPES = Object.freeze({
     'Two analog output channels, with one positive and one negative connection per channel.'),
   EX_AI: template('EX_AI', 'Ex-AI', '2 × I · 2-wire HART', 'assets/module-ex-ai.svg', exBody, exPorts,
     'The CH0 and CH1 negative/positive terminals annotated in your Ex-AI reference.'),
+  DIN_RESISTOR: template('DIN_RESISTOR', 'DIN Resistor Rail Terminal Block', '10 terminals · 10 top + 10 bottom connectors', 'assets/module-din-resistor.png', dinBody, dinPorts,
+    'Ten resistor terminals with one connector per terminal along the top and bottom. Connect cable conductors or I/O module ports to either row.', {
+      width: 640, height: 650, connectorRole: 'terminal',
+      header: Object.freeze({ x: 12, y: 235, width: 616, height: 18 }),
+      routingObstacles: Object.freeze([Object.freeze({ x: 12, y: 0, width: 616, height: 650 })]),
+      imageAlt: 'Ten upright DIN resistor rail terminals, matching the approved flat-color artwork',
+    }),
 });
 
 export const MODULE_TYPE_LIST = Object.freeze(Object.values(MODULE_TYPES));

@@ -77,21 +77,39 @@ export function applyFourWireOrder(project) {
 export const snap = (value, grid = 10) => Math.round(value / grid) * grid;
 export const makeId = (prefix = 'n') => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+/** A terminal block can join cables to I/O hardware without enabling I/O-to-I/O wiring. */
+export function compatiblePorts(a, b) {
+  if (!a || !b || a.id === b.id || (a.nodeId && a.nodeId === b.nodeId)) return false;
+  if (!['device', 'module'].includes(a.kind) || !['device', 'module'].includes(b.kind)) return false;
+  if (a.kind !== b.kind) return true;
+  return a.kind === 'module' && (a.connectorRole === 'terminal' || b.connectorRole === 'terminal');
+}
+
 export function geometry(nodes, types) {
   const ports = Object.create(null), obstacles = [];
   for (const node of nodes) {
     if (node.kind === 'module') {
       const type = types[node.type];
       if (!type) continue;
-      const leftEdge = Math.min(...type.ports.map(port => port.x));
-      const rightEdge = Math.max(...type.ports.map(port => port.x));
-      obstacles.push(
-        { id: `${node.id}-header`, nodeId: node.id, x: node.x, y: node.y - 36, width: type.width, height: 36 },
-        { id: node.id, nodeId: node.id, x: node.x + leftEdge, y: node.y, width: rightEdge - leftEdge, height: type.height },
-      );
+      if (type.routingObstacles) {
+        // Explicit rectangles cover the bank, callouts, and its inset header;
+        // they do not assume that connection points face left or right.
+        type.routingObstacles.forEach((r, index) => obstacles.push({
+          id: index ? `${node.id}-obstacle-${index}` : node.id, nodeId: node.id,
+          x: node.x + r.x, y: node.y + r.y, width: r.width, height: r.height,
+        }));
+      } else {
+        const leftEdge = Math.min(...type.ports.map(port => port.x));
+        const rightEdge = Math.max(...type.ports.map(port => port.x));
+        const header = type.header || { x: 0, y: -36, width: type.width, height: 36 };
+        obstacles.push(
+          { id: `${node.id}-header`, nodeId: node.id, x: node.x + header.x, y: node.y + header.y, width: header.width, height: header.height },
+          { id: node.id, nodeId: node.id, x: node.x + leftEdge, y: node.y, width: rightEdge - leftEdge, height: type.height },
+        );
+      }
       for (const port of type.ports) {
         const id = `${node.id}:${port.id}`;
-        ports[id] = { ...port, id, localId: port.id, nodeId: node.id, kind: 'module', x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${port.label}` };
+        ports[id] = { ...port, id, localId: port.id, nodeId: node.id, kind: 'module', ...(type.connectorRole ? { connectorRole: type.connectorRole } : {}), x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${port.label}` };
       }
     } else if (node.kind === 'device') {
       const conductors = CONDUCTORS[node.wireCount] || CONDUCTORS[2];
@@ -140,18 +158,21 @@ export function normalizeProject(input, types) {
   const moduleIds = new Set(nodes.filter(n => n.kind === 'module').map(n => n.id));
   for (const n of nodes) if (n.assignment && !moduleIds.has(n.assignment.moduleId)) delete n.assignment;
   const { ports } = geometry(nodes, types);
-  const wireIds = new Set(), usedDevicePorts = new Set(), usedModulePorts = new Set();
+  const wireIds = new Set(), usedPorts = new Set();
   const wires = input.wires.map(raw => {
     const id = str(raw.id, 90);
     if (!/^[a-zA-Z0-9_-]+$/.test(id) || wireIds.has(id)) throw new Error('The project contains invalid or duplicate wire IDs.');
     wireIds.add(id);
     let from = ports[raw.from], to = ports[raw.to];
-    if (!Object.hasOwn(ports, raw.from) || !Object.hasOwn(ports, raw.to) || !from || !to || !['module', 'device'].includes(from.kind) || !['module', 'device'].includes(to.kind) || from.kind === to.kind) throw new Error('A wire refers to a missing or incompatible terminal.');
-    const reversed = from.kind === 'module';
+    if (!Object.hasOwn(ports, raw.from) || !Object.hasOwn(ports, raw.to) || !compatiblePorts(from, to)) throw new Error('A wire refers to a missing or incompatible terminal.');
+    const reversed = from.kind === 'module' && to.kind === 'device';
     if (reversed) [from, to] = [to, from];
-    if (usedDevicePorts.has(from.id)) throw new Error('A conductor is connected more than once.');
-    if (usedModulePorts.has(to.id) && !to.allowMultiple && !to.common) throw new Error('A channel terminal is connected more than once.');
-    usedDevicePorts.add(from.id); usedModulePorts.add(to.id);
+    for (const port of [from, to]) {
+      if (usedPorts.has(port.id) && (port.kind === 'device' || (!port.allowMultiple && !port.common))) {
+        throw new Error(port.kind === 'device' ? 'A conductor is connected more than once.' : 'A channel terminal is connected more than once.');
+      }
+      usedPorts.add(port.id);
+    }
     const routeGeometry = {};
     for (const key of ['manual', 'savedRoute']) {
       let routeInput = raw[key];
@@ -174,8 +195,14 @@ export function boundsOf(nodes, types, routes = {}) {
   const include = (x, y) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); };
   for (const n of nodes) {
     const t = n.kind === 'module' ? types[n.type] : null;
-    include(n.x - 9, n.y - (t ? 42 : 9));
-    include(n.x + (t ? t.width : deviceWidth(n)) + 9, n.y + (t ? t.height : deviceHeight(n)) + 9);
+    if (t) {
+      const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
+      include(n.x + Math.min(-9, header.x - 9), n.y + Math.min(-9, header.y - 8));
+      include(n.x + Math.max(t.width + 9, header.x + header.width + 9), n.y + Math.max(t.height + 9, header.y + header.height + 8));
+    } else {
+      include(n.x - 9, n.y - 9);
+      include(n.x + deviceWidth(n) + 9, n.y + deviceHeight(n) + 9);
+    }
   }
   for (const r of Object.values(routes)) for (const p of r.points || []) include(p.x, p.y);
   if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 900, height: 600 };

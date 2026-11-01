@@ -23,7 +23,7 @@ export function routeWithPreferences({
     }
     return next;
   });
-  const result = routeWires({ wires: effectiveWires, ports, obstacles, grid, gap });
+  const result = routeWires({ wires: effectiveWires, ports, obstacles, grid, gap, preserveBlockedRoutes: true });
   const portMap = ports instanceof Map ? ports : new Map(
     Array.isArray(ports) ? ports.map(port => [port.id, port]) : Object.entries(ports),
   );

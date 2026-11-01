@@ -4,10 +4,10 @@ import { resolveManualRoute } from './manual-routing.js';
  * Deterministic, obstacle-aware orthogonal wire routing.
  *
  * Public API:
- *   routeWires({ wires, ports, obstacles, grid = 10, gap = 10 })
+ *   routeWires({ wires, ports, obstacles, grid = 10, gap = 10, preserveBlockedRoutes = false })
  *   -> { routes: { [wireId]: { points, status, crossings, diagnostics } }, diagnostics }
  *
- * Ports are { id, nodeId, x, y, side: 'left' | 'right' } and may be passed
+ * Ports are { id, nodeId, x, y, side: 'left' | 'right' | 'top' | 'bottom' } and may be passed
  * as an array, a Map, or an object. Wires have { id, from, to, width?, manual? };
  * from/to are port IDs or complete port objects. Obstacles have
  * { id / nodeId, x, y, width, height } (w/h aliases are accepted).
@@ -199,22 +199,25 @@ function normalizeRects(obstacles, padding) {
 
 function escapePort(port, rects, grid) {
   const owners = rects.filter(r => r.nodeId !== undefined && r.nodeId === port.nodeId);
-  const left = port.side === 'left';
+  const vertical = port.side === 'top' || port.side === 'bottom';
+  const axis = vertical ? 'y' : 'x', cross = vertical ? 'x' : 'y';
+  const negative = port.side === 'left' || port.side === 'top';
+  const edge = vertical ? (negative ? 'top' : 'bottom') : (negative ? 'left' : 'right');
   const boundary = owners.length
-    ? (left ? Math.min(port.x, ...owners.map(r => r.left)) : Math.max(port.x, ...owners.map(r => r.right)))
-    : port.x + (left ? -grid / 2 : grid / 2);
-  const x = (left ? Math.floor((boundary - EPS) / grid) : Math.ceil((boundary + EPS) / grid)) * grid;
-  const y = Math.round(port.y / grid) * grid;
-  const points = compact([{ x: port.x, y: port.y }, { x, y: port.y }, { x, y }]);
+    ? (negative ? Math.min(port[axis], ...owners.map(r => r[edge])) : Math.max(port[axis], ...owners.map(r => r[edge])))
+    : port[axis] + (negative ? -grid / 2 : grid / 2);
+  const outward = (negative ? Math.floor((boundary - EPS) / grid) : Math.ceil((boundary + EPS) / grid)) * grid;
+  const anchor = { [axis]: outward, [cross]: Math.round(port[cross] / grid) * grid };
+  const points = compact([{ x: port.x, y: port.y }, { [axis]: outward, [cross]: port[cross] }, anchor]);
   for (let i = 1; i < points.length; i++) {
     for (const r of rects) {
-      // The first, outward horizontal segment is the only owner exception.
+      // The first outward segment is the only owner exception.
       if (i === 1 && r.nodeId !== undefined && r.nodeId === port.nodeId) continue;
       if (segmentHitsRect(points[i - 1], points[i], r)) return null;
     }
   }
-  return { points, anchor: { x, y }, owners,
-    direction: points.length > 1 && eq(points[points.length - 2].x, x) ? 1 : 0 };
+  return { points, anchor, owners,
+    direction: points.length > 1 && eq(points[points.length - 2].x, anchor.x) ? 1 : 0 };
 }
 
 function makeBounds(a, b, rects, grid, margin, includeObstacles) {
@@ -333,7 +336,7 @@ function search(start, end, rects, occupied, grid, options) {
 }
 
 function validPort(port) {
-  return port && finite(Number(port.x)) && finite(Number(port.y)) && ['left', 'right'].includes(port.side);
+  return port && finite(Number(port.x)) && finite(Number(port.y)) && ['left', 'right', 'top', 'bottom'].includes(port.side);
 }
 
 /** True when a proposed full route folds onto or crosses its own nonadjacent segments. */
@@ -359,10 +362,14 @@ function manualPathProblem(points, { from, to, start, end, rects, occupied, rese
     if (pointEqual(a, b) || (!eq(a.x, b.x) && !eq(a.y, b.y))) return 'Manual wire segments must be horizontal or vertical.';
   }
   const first = points[1], last = points.at(-2);
-  const fromSign = from.side === 'left' ? -1 : 1, toSign = to.side === 'left' ? -1 : 1;
   const startEscape = start.points[1] || start.anchor, endEscape = end.points[1] || end.anchor;
-  if (!eq(first.y, from.y) || (first.x - from.x) * fromSign < (startEscape.x - from.x) * fromSign - EPS ||
-      !eq(last.y, to.y) || (last.x - to.x) * toSign < (endEscape.x - to.x) * toSign - EPS) {
+  const clearsEscape = (point, port, escape) => {
+    const vertical = port.side === 'top' || port.side === 'bottom';
+    const axis = vertical ? 'y' : 'x', cross = vertical ? 'x' : 'y';
+    const sign = port.side === 'left' || port.side === 'top' ? -1 : 1;
+    return eq(point[cross], port[cross]) && (point[axis] - port[axis]) * sign >= (escape[axis] - port[axis]) * sign - EPS;
+  };
+  if (!clearsEscape(first, from, startEscape) || !clearsEscape(last, to, endEscape)) {
     return 'Keep an outward connection stub between each port and the first bend.';
   }
   const ss = segments(points);
@@ -390,7 +397,7 @@ function manualPathProblem(points, { from, to, start, end, rects, occupied, rese
   return '';
 }
 
-export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, gap = 10 } = {}) {
+export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, gap = 10, preserveBlockedRoutes = false } = {}) {
   grid = finite(Number(grid)) ? Math.max(2, Math.min(100, Number(grid))) : 10;
   gap = finite(Number(gap)) ? Math.max(0, Number(gap)) : grid;
   const portMap = normalizePorts(ports), routes = {};
@@ -426,7 +433,7 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
     routes[id] = result;
     const fromInput = getPort(wire.from), toInput = getPort(wire.to);
     if (!validPort(fromInput) || !validPort(toInput)) {
-      result.diagnostics.push('A wire endpoint is missing or does not have a valid left/right port.'); diagnostics.blocked++; continue;
+      result.diagnostics.push('A wire endpoint is missing or does not have a valid port side.'); diagnostics.blocked++; continue;
     }
     const from = { ...fromInput, x: Number(fromInput.x), y: Number(fromInput.y) };
     const to = { ...toInput, x: Number(toInput.x), y: Number(toInput.y) };
@@ -447,10 +454,14 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
     let path = null, lastReason = '';
     if (wire.manual != null) {
       const candidate = resolveManualRoute(wire.manual,
-        { ...from, escapeX: (start.points[1] || start.anchor).x },
-        { ...to, escapeX: (end.points[1] || end.anchor).x }, { grid, gap });
+        { ...from, escapeX: (start.points[1] || start.anchor).x, escapeY: (start.points[1] || start.anchor).y },
+        { ...to, escapeX: (end.points[1] || end.anchor).x, escapeY: (end.points[1] || end.anchor).y }, { grid, gap });
       const problem = manualPathProblem(candidate, { from, to, start, end, rects, occupied, reserved, id });
       if (problem) {
+        // Fixed paths remain visible when blocked. Keep their lanes occupied
+        // as well, so a new automatic wire cannot be laid over the geometry
+        // that independent-routing will preserve for the user to adjust.
+        if (preserveBlockedRoutes && Array.isArray(candidate) && candidate.length >= 2) occupied.add(candidate, id);
         result.diagnostics.push(problem); diagnostics.blocked++; continue;
       }
       path = candidate;

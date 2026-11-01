@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f7f6">
-  <meta name="description" content="An interactive wiring workspace for Siemens I/O modules. Arrange devices, connect conductors, and export clean transparent diagrams.">
+  <meta name="description" content="An interactive wiring workspace for I/O modules and DIN rail terminals. Arrange devices, connect conductors, and export clean transparent diagrams.">
   <title>Wirebench — Wiring editor</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -56,7 +56,7 @@
       <aside class="library-panel" aria-label="Component library">
         <div class="panel-heading"><h1>Components</h1><span class="subtle-badge">LIBRARY</span></div>
         <section class="library-section">
-          <div class="section-heading"><h2>I/O modules</h2><span>5 types</span></div>
+          <div class="section-heading"><h2>Modules</h2><span>6 types</span></div>
           <p class="section-description">Add a module to your canvas.</p>
           <div class="module-library">
             <button class="module-card" data-add-module="DQ"><span class="module-thumb dq"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>DQ</strong><small>Digital output · 8 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
@@ -64,6 +64,7 @@
             <button class="module-card" data-add-module="AI_RTD"><span class="module-thumb rtd"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AI RTD</strong><small>Temperature · 4 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
             <button class="module-card" data-add-module="AQ"><span class="module-thumb aq"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AQ</strong><small>Analog output · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
             <button class="module-card" data-add-module="EX_AI"><span class="module-thumb ex"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>Ex-AI</strong><small>Analog input · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card terminal-module-card" data-add-module="DIN_RESISTOR"><span class="module-thumb din"><img src="assets/module-din-resistor.png" alt="" /></span><span class="module-card-copy"><strong>DIN Resistor Rail Terminal Block</strong><small>10 top + 10 bottom connectors</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
           </div>
         </section>
         <section class="library-section devices-section">

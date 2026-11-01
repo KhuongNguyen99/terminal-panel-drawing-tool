@@ -1,0 +1,4 @@
+# Optional asset-generation dependencies; not needed by the browser app.
+Pillow==12.3.0
+fonttools==4.61.1
+PyMuPDF==1.26.6

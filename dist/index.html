@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f6">
+  <meta name="description" content="An interactive wiring workspace for Siemens I/O modules. Arrange devices, connect conductors, and export clean transparent diagrams.">
+  <title>Wirebench — Wiring editor</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12" transform="translate(0 -2)"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12" transform="translate(0 -2)"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 8V5h7l2 3h9v12H3V8Zm0 3h18"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v11m-4-7 4-4 4 4M5 11v9h14v-9"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5M8 8h8v8H8z"/></symbol>
+    <symbol id="i-select" viewBox="0 0 24 24"><path d="m5 3 14 10-7 1-3 7L5 3Z"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-4a2 2 0 0 1 4 0v8c0 5-3 7-7 7-3 0-4-2-6-5l-3-4a2 2 0 0 1 3-2l3 3"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h10v7H7v7h10"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-module" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="1.5"/><path d="M10 5h4M10 8h4M10 12h1m2 0h1m-4 3h1m2 0h1m-4 3h1m2 0h1M5 6H3m2 5H3m2 6H3m16-11h2m-2 5h2m-2 6h2"/></symbol>
+    <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="6" width="15" height="12" rx="2"/><path d="M7 10h7M7 14h4m7-5h3m-3 6h3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Wirebench home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M7 8v16M7 12h10v8h8M17 8v4m8 8v4"/><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><circle cx="25" cy="24" r="2.5"/></svg></span>
+        <span><strong>Wirebench</strong><small>WIRING EDITOR</small></span>
+      </a>
+      <div class="project-heading">
+        <label class="sr-only" for="project-title">Project name</label>
+        <input id="project-title" value="Untitled wiring" maxlength="90" autocomplete="off" spellcheck="false">
+        <span class="save-indicator" id="save-status"><span class="status-dot"></span>Saved locally</span>
+      </div>
+      <div class="top-actions">
+        <div class="history-actions" aria-label="History">
+          <button class="icon-button" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="icon"><use href="#i-undo"/></svg></button>
+          <button class="icon-button" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="icon"><use href="#i-redo"/></svg></button>
+        </div>
+        <button class="button subtle" data-action="open-project" title="Open a saved project"><svg class="icon"><use href="#i-open"/></svg><span>Open</span></button>
+        <button class="button subtle" data-action="save-project" title="Download the editable project"><svg class="icon"><use href="#i-save"/></svg><span>Save project</span></button>
+        <button class="button primary" data-action="export-png"><svg class="icon"><use href="#i-export"/></svg><span>Export PNG</span></button>
+        <button class="icon-button help-button" data-action="help" title="Editor guide" aria-label="Editor guide"><svg class="icon"><use href="#i-help"/></svg></button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="library-panel" aria-label="Component library">
+        <div class="panel-heading"><h1>Components</h1><span class="subtle-badge">LIBRARY</span></div>
+        <section class="library-section">
+          <div class="section-heading"><h2>I/O modules</h2><span>5 types</span></div>
+          <p class="section-description">Add a module to your canvas.</p>
+          <div class="module-library">
+            <button class="module-card" data-add-module="DQ"><span class="module-thumb dq"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>DQ</strong><small>Digital output · 8 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card" data-add-module="AI"><span class="module-thumb ai"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AI</strong><small>Analog input · 8 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card" data-add-module="AI_RTD"><span class="module-thumb rtd"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AI RTD</strong><small>Temperature · 4 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card" data-add-module="AQ"><span class="module-thumb aq"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AQ</strong><small>Analog output · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card" data-add-module="EX_AI"><span class="module-thumb ex"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>Ex-AI</strong><small>Analog input · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+          </div>
+        </section>
+        <section class="library-section devices-section">
+          <div class="section-heading"><h2>Devices</h2><span id="device-list-scope">All devices</span></div>
+          <div class="device-add-actions">
+            <button class="device-add-button" data-action="add-2wire"><span class="wire-swatches"><i class="swatch-black"></i><i class="swatch-white"></i></span><strong>2-wire</strong><svg class="icon"><use href="#i-plus"/></svg></button>
+            <button class="device-add-button" data-action="add-4wire"><span class="wire-swatches"><i class="swatch-red"></i><i class="swatch-black"></i><i class="swatch-green"></i><i class="swatch-white"></i></span><strong>4-wire</strong><svg class="icon"><use href="#i-plus"/></svg></button>
+          </div>
+          <div id="device-list" class="device-list" aria-label="Devices on canvas"></div>
+        </section>
+        <div class="library-footer">
+          <div class="tiny-diagram" aria-hidden="true"><span></span><i></i><b></b></div>
+          <strong>A connection starts with a dot.</strong>
+          <p>Click a device conductor, then a channel port. Drag anything to arrange it.</p>
+          <button class="text-button" data-action="help">View editor guide <span aria-hidden="true">↗</span></button>
+        </div>
+      </aside>
+
+      <section class="canvas-area" aria-label="Wiring canvas">
+        <div class="canvas-topline"><label class="slot-navigation"><span>Jump to</span><select id="slot-jump" aria-label="RIO and slot"><option value="">All slots · overview</option></select></label><div class="canvas-top-actions"><button class="button compact" data-action="full-schedule" title="Open the populated RIO A and RIO B schedule in its own workspace">Full RIO schedule</button><button class="button compact" data-action="auto-route" title="Recalculate every wire, including edited paths. Undo restores the previous layout."><svg class="icon"><use href="#i-route"/></svg>Auto-route all</button></div></div>
+        <div class="schedule-strip"><span id="slot-summary"></span><div class="routing-options"><span id="routing-mode" class="routing-state">Wires stay in place</span><label class="auto-route-control" title="When on, unedited wires automatically reroute as you arrange components. Moving a wire segment always keeps the other wire paths in place."><input type="checkbox" id="auto-route-toggle"><span>Auto-route</span></label><button class="text-button" data-action="schedule-notes">Source notes</button></div></div>
+        <div id="stage" class="stage" tabindex="0" aria-label="Interactive wiring canvas. Drag components; click wire and channel ports to connect.">
+          <svg id="canvas" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" aria-label="Wiring diagram">
+            <defs></defs>
+            <g id="scene"><g id="wires-layer"></g><g id="nodes-layer"></g><g id="overlay-layer"></g></g>
+          </svg>
+          <div id="canvas-hint" class="canvas-hint"><div class="hint-icon"><svg class="icon"><use href="#i-route"/></svg></div><span class="eyebrow">YOUR WIRING WORKSPACE</span><h2>Make every connection clear.</h2><p>Add an I/O module and a device from the library.<br>Then connect their ports, one conductor at a time.</p><button class="button primary" data-action="example">Start with the Slot 5 example <span aria-hidden="true">→</span></button></div>
+          <div class="canvas-toolbar" aria-label="Canvas tools">
+            <div class="tool-segment"><button class="icon-button active" id="select-tool" data-action="select-tool" title="Select and move (V)" aria-label="Select and move" aria-pressed="true"><svg class="icon"><use href="#i-select"/></svg></button><button class="icon-button" id="pan-tool" data-action="pan-tool" title="Pan canvas (H or hold Space)" aria-label="Pan canvas" aria-pressed="false"><svg class="icon"><use href="#i-hand"/></svg></button></div>
+            <span class="toolbar-divider"></span>
+            <label class="snap-control"><input type="checkbox" id="snap-toggle" checked><span class="mini-switch"></span><span>Snap</span></label>
+            <label class="grid-control"><span class="sr-only">Grid spacing</span><select id="grid-size" aria-label="Grid spacing"><option value="5">5 px</option><option value="10" selected>10 px</option><option value="20">20 px</option></select></label>
+            <span class="toolbar-divider"></span>
+            <button class="icon-button" data-action="zoom-out" title="Zoom out" aria-label="Zoom out"><svg class="icon"><use href="#i-minus"/></svg></button><span id="zoom-label" class="zoom-label">100%</span><button class="icon-button" data-action="zoom-in" title="Zoom in" aria-label="Zoom in"><svg class="icon"><use href="#i-plus"/></svg></button>
+            <span class="toolbar-divider"></span>
+            <button class="button fit-button" data-action="fit" title="Fit diagram to canvas"><svg class="icon"><use href="#i-fit"/></svg><span>Fit</span></button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector-panel" aria-label="Properties inspector">
+        <div class="panel-heading"><h2>Properties</h2><span class="subtle-badge">INSPECTOR</span></div>
+        <div id="inspector-content" class="inspector-content">
+          <div class="inspector-empty"><div class="empty-selection-icon"><svg class="icon"><use href="#i-select"/></svg></div><h3>Select something to edit</h3><p>Choose a module, device, or wire on the canvas to adjust its properties.</p><div class="inspector-shortcuts"><span>Move selection<kbd>↑ ↓ ← →</kbd></span><span>Delete selection<kbd>Delete</kbd></span><span>Pan canvas<kbd>Space + drag</kbd></span></div></div>
+        </div>
+        <div class="inspector-bottom"><button class="text-button danger-text" data-action="clear"><svg class="icon"><use href="#i-trash"/></svg>Clear canvas</button></div>
+      </aside>
+    </main>
+    <footer class="statusbar"><span id="status-message"><span class="status-dot"></span>Ready to wire</span><span class="statusbar-right"><span id="board-count">0 modules · 0 devices · 0 wires</span><span class="status-separator"></span><span>Local autosave</span></span></footer>
+  </div>
+
+  <input type="file" id="project-file" accept="application/json,.json" hidden>
+  <dialog id="export-dialog" class="modal">
+    <div class="modal-heading"><div><span class="eyebrow">SHARE YOUR DIAGRAM</span><h2>Export PNG</h2></div><button class="icon-button" data-action="cancel-export" aria-label="Close export dialog"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <p class="modal-description">A clean image of your components and connections, without the editor or grid.</p>
+    <div class="export-preview"><span class="preview-chip"><svg class="icon"><use href="#i-export"/></svg>Transparent background</span></div>
+    <label class="field"><span>Export area</span><select id="export-scope"><option value="all">Entire diagram</option></select></label>
+    <div class="form-row"><label class="field"><span>Resolution</span><select id="export-scale"><option value="1">1× — Standard</option><option value="2" selected>2× — High resolution</option><option value="3">3× — Extra sharp</option><option value="4">4× — Print quality</option></select></label><label class="field"><span>Padding</span><span class="input-with-unit"><input type="number" id="export-margin" min="0" max="200" step="10" value="40"><span>px</span></span></label></div>
+    <label class="check-row"><input type="checkbox" id="export-transparent" checked><span><strong>Transparent background</strong><small>Place your diagram into any document.</small></span></label>
+    <label class="check-row"><input type="checkbox" id="export-title"><span><strong>Include project title</strong><small>Add the project name above the diagram.</small></span></label>
+    <div id="export-info" class="export-info" aria-live="polite"></div>
+    <div class="modal-actions"><button class="button" data-action="cancel-export">Cancel</button><button class="button primary" data-action="confirm-export"><svg class="icon"><use href="#i-export"/></svg>Download PNG</button></div>
+  </dialog>
+
+  <dialog id="schedule-dialog" class="modal schedule-modal">
+    <div class="modal-heading"><div><span class="eyebrow">RIO A + RIO B</span><h2>Populated from your two sheets</h2></div><button class="icon-button" data-action="close-schedule-notes" aria-label="Close source notes"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <div class="schedule-totals"><span><strong>22</strong> slots</span><span><strong>100</strong> channels</span><span><strong>56</strong> devices</span><span><strong>44</strong> spares</span></div>
+    <p>All 56 named devices and all 26 handwritten cable numbers are included. The other 30 cable-number fields are blank because no number was written in the source.</p>
+    <h3>Connections included</h3><p>82 conductors are routed: 54 on standard AI, 12 on two-channel AI, and 16 DQ signal leads. Black connects to − and white to + on two-wire inputs, following your example.</p>
+    <h3>Pin assignments still needed</h3><p>The 7 RTD labels have all four colored conductors ready for manual wiring. The sheets do not map those colors to M+, M−, I+, and I−. The 16 DQ black returns also remain unconnected because the reference does not identify individual common terminals.</p>
+    <h3>Source interpretation</h3><p>Four-channel AI groups use the supplied AI RTD artwork; two-channel AI groups use Ex-AI artwork. The sheet itself labels these groups AI. Spare groups use the same channel-count convention. No AQ channel assignments appear in the sheets.</p>
+    <p>The duplicate blank RIO A Slot 5 block is merged with its populated rows. Slot 5 tags are corrected to <code>rioa.slot5.ai0…ai7</code>. <code>.wire_ok</code> entries are retained as status metadata, not extra physical channels.</p>
+    <div class="modal-actions"><button class="button primary" data-action="close-schedule-notes">Done</button></div>
+  </dialog>
+
+  <dialog id="help-dialog" class="modal help-modal">
+    <div class="modal-heading"><div><span class="eyebrow">A QUICK TOUR</span><h2>Your wiring workspace</h2></div><button class="icon-button" data-action="close-help" aria-label="Close editor guide"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <div class="help-steps"><div><span>01</span><section><h3>Place your components</h3><p>Add a module or a 2-wire / 4-wire cable label. Drag it anywhere on the grid. Use Properties to edit names, cable numbers, label side, width, and height.</p></section></div><div><span>02</span><section><h3>Make your connections</h3><p>Click a conductor dot on a cable label, then a channel port on a module. You can also drag between ports. A new wire gets an initial path, then stays in place. Moving a component keeps its wires attached.</p></section></div><div><span>03</span><section><h3>Adjust one wire at a time</h3><p>Select a wire, then drag any segment or square handle. Other wire paths stay fixed. Auto-route is off by default. Use Auto-route this wire for one connection, or Auto-route all to replace every path. Turn on Auto-route for live routing while arranging components. Undo restores previous paths.</p></section></div><div><span>04</span><section><h3>Save and share</h3><p>Save project downloads an editable JSON file, including your wire paths and routing preference. Open restores it. Export PNG keeps the same layout with an optional transparent background.</p></section></div></div>
+    <div class="shortcut-grid"><span>Undo<kbd>Ctrl / ⌘ Z</kbd></span><span>Redo<kbd>Ctrl / ⌘ Shift Z</kbd></span><span>Delete selection<kbd>Delete</kbd></span><span>Pan<kbd>Space + drag</kbd></span><span>Zoom<kbd>Mouse wheel</kbd></span><span>Cancel connection<kbd>Esc</kbd></span></div>
+    <div class="modal-actions"><button class="button primary" data-action="close-help">Got it</button></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

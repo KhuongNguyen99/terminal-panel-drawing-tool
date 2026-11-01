@@ -1,0 +1,16 @@
+{
+  "name": "wirebench",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wirebench: a manual terminal-panel wiring editor with editable cable labels and transparent PNG export.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KhuongNguyen99/terminal-panel-drawing-tool.git"
+  },
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

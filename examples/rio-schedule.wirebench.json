@@ -1,0 +1,2078 @@
+{
+  "version": 1,
+  "title": "RIO A + RIO B · Complete channel schedule",
+  "nodes": [
+    {
+      "id": "rioa-slot1",
+      "kind": "module",
+      "x": 440,
+      "y": 80,
+      "name": "DQ",
+      "type": "DQ",
+      "slot": "1",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot1"
+    },
+    {
+      "id": "rioa-slot1-ch0",
+      "kind": "device",
+      "x": 20,
+      "y": 150,
+      "name": "*v-3501#-y",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 0,
+        "tag": "rioa.slot1.dq0",
+        "statusTag": "rioa.slot1.dq0.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch1",
+      "kind": "device",
+      "x": 980,
+      "y": 150,
+      "name": "*v-3511#-y",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 1,
+        "tag": "rioa.slot1.dq1",
+        "statusTag": "rioa.slot1.dq1.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch2",
+      "kind": "device",
+      "x": 20,
+      "y": 320,
+      "name": "*v-3531#",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 2,
+        "tag": "rioa.slot1.dq2",
+        "statusTag": "rioa.slot1.dq2.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch3",
+      "kind": "device",
+      "x": 980,
+      "y": 320,
+      "name": "*v-3541#-close",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 3,
+        "tag": "rioa.slot1.dq3",
+        "statusTag": "rioa.slot1.dq3.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch4",
+      "kind": "device",
+      "x": 20,
+      "y": 490,
+      "name": "*v-3541#-open",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 4,
+        "tag": "rioa.slot1.dq4",
+        "statusTag": "rioa.slot1.dq4.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch5",
+      "kind": "device",
+      "x": 980,
+      "y": 490,
+      "name": "*v-3541#-y",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 5,
+        "tag": "rioa.slot1.dq5",
+        "statusTag": "rioa.slot1.dq5.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch6",
+      "kind": "device",
+      "x": 20,
+      "y": 660,
+      "name": "*v-3551#-close",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 6,
+        "tag": "rioa.slot1.dq6",
+        "statusTag": "rioa.slot1.dq6.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot1-ch7",
+      "kind": "device",
+      "x": 980,
+      "y": 660,
+      "name": "*v-3551#-open",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot1",
+        "channel": 7,
+        "tag": "rioa.slot1.dq7",
+        "statusTag": "rioa.slot1.dq7.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot2",
+      "kind": "module",
+      "x": 1840,
+      "y": 80,
+      "name": "AI",
+      "type": "AI",
+      "slot": "2",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot2"
+    },
+    {
+      "id": "rioa-slot2-ch0",
+      "kind": "device",
+      "x": 1420,
+      "y": 150,
+      "name": "*v-3501#-y_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 0,
+        "tag": "rioa.slot2.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch1",
+      "kind": "device",
+      "x": 2380,
+      "y": 150,
+      "name": "*v-3511#-y_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 1,
+        "tag": "rioa.slot2.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch2",
+      "kind": "device",
+      "x": 1420,
+      "y": 320,
+      "name": "*v-3531#_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 2,
+        "tag": "rioa.slot2.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch3",
+      "kind": "device",
+      "x": 2380,
+      "y": 320,
+      "name": "*v-3541#-close_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 3,
+        "tag": "rioa.slot2.ai3",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch4",
+      "kind": "device",
+      "x": 1420,
+      "y": 490,
+      "name": "*v-3541#-open_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 4,
+        "tag": "rioa.slot2.ai4",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch5",
+      "kind": "device",
+      "x": 2380,
+      "y": 490,
+      "name": "*v-3541#-y_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 5,
+        "tag": "rioa.slot2.ai5",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch6",
+      "kind": "device",
+      "x": 1420,
+      "y": 660,
+      "name": "*v-3551#-close_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 6,
+        "tag": "rioa.slot2.ai6",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot2-ch7",
+      "kind": "device",
+      "x": 2380,
+      "y": 660,
+      "name": "*v-3551#-open_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot2",
+        "channel": 7,
+        "tag": "rioa.slot2.ai7",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot3",
+      "kind": "module",
+      "x": 3240,
+      "y": 80,
+      "name": "DQ",
+      "type": "DQ",
+      "slot": "3",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot3"
+    },
+    {
+      "id": "rioa-slot3-ch0",
+      "kind": "device",
+      "x": 2820,
+      "y": 150,
+      "name": "*v-3561#",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot3",
+        "channel": 0,
+        "tag": "rioa.slot3.dq0",
+        "statusTag": "rioa.slot3.dq0.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot3-ch1",
+      "kind": "device",
+      "x": 3780,
+      "y": 150,
+      "name": "*v-3571#1",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot3",
+        "channel": 1,
+        "tag": "rioa.slot3.dq1",
+        "statusTag": "rioa.slot3.dq1.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "rioa-slot5",
+      "kind": "module",
+      "x": 4640,
+      "y": 80,
+      "name": "AI",
+      "type": "AI",
+      "slot": "5",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot5"
+    },
+    {
+      "id": "rioa-slot5-ch0",
+      "kind": "device",
+      "x": 4220,
+      "y": 150,
+      "name": "*v-3501#-y-pos",
+      "cable": "17",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 0,
+        "tag": "rioa.slot5.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch1",
+      "kind": "device",
+      "x": 5180,
+      "y": 150,
+      "name": "*v-3511#-y-pos",
+      "cable": "23",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 1,
+        "tag": "rioa.slot5.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch2",
+      "kind": "device",
+      "x": 4220,
+      "y": 320,
+      "name": "*v-3531#-pos",
+      "cable": "13",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 2,
+        "tag": "rioa.slot5.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch3",
+      "kind": "device",
+      "x": 5180,
+      "y": 320,
+      "name": "*v-3541#-pos",
+      "cable": "21",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 3,
+        "tag": "rioa.slot5.ai3",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch4",
+      "kind": "device",
+      "x": 4220,
+      "y": 490,
+      "name": "*v-3541#-y-pos",
+      "cable": "19",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 4,
+        "tag": "rioa.slot5.ai4",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch5",
+      "kind": "device",
+      "x": 5180,
+      "y": 490,
+      "name": "*v-3551#-pos",
+      "cable": "9",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 5,
+        "tag": "rioa.slot5.ai5",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch6",
+      "kind": "device",
+      "x": 4220,
+      "y": 660,
+      "name": "*v-3561#-pos",
+      "cable": "7",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 6,
+        "tag": "rioa.slot5.ai6",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot5-ch7",
+      "kind": "device",
+      "x": 5180,
+      "y": 660,
+      "name": "*v-3571#1-pos",
+      "cable": "26",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot5",
+        "channel": 7,
+        "tag": "rioa.slot5.ai7",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot6",
+      "kind": "module",
+      "x": 440,
+      "y": 930,
+      "name": "AI",
+      "type": "AI",
+      "slot": "6",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot6"
+    },
+    {
+      "id": "rioa-slot7",
+      "kind": "module",
+      "x": 1840,
+      "y": 930,
+      "name": "AI RTD",
+      "type": "AI_RTD",
+      "slot": "7",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot7"
+    },
+    {
+      "id": "rioa-slot7-ch0",
+      "kind": "device",
+      "x": 1420,
+      "y": 1000,
+      "name": "*th-3511#",
+      "cable": "20",
+      "wireCount": 4,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot7",
+        "channel": 0,
+        "tag": "rioa.slot7.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot7-ch1",
+      "kind": "device",
+      "x": 1420,
+      "y": 1170,
+      "name": "*th-3530#",
+      "cable": "14",
+      "wireCount": 4,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot7",
+        "channel": 1,
+        "tag": "rioa.slot7.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot7-ch2",
+      "kind": "device",
+      "x": 2380,
+      "y": 1000,
+      "name": "*th-3550#",
+      "cable": "10",
+      "wireCount": 4,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot7",
+        "channel": 2,
+        "tag": "rioa.slot7.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot7-ch3",
+      "kind": "device",
+      "x": 2380,
+      "y": 1170,
+      "name": "*th-3560#",
+      "cable": "8",
+      "wireCount": 4,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot7",
+        "channel": 3,
+        "tag": "rioa.slot7.ai3",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot8",
+      "kind": "module",
+      "x": 3240,
+      "y": 930,
+      "name": "AI RTD",
+      "type": "AI_RTD",
+      "slot": "8",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot8"
+    },
+    {
+      "id": "rioa-slot11",
+      "kind": "module",
+      "x": 4640,
+      "y": 930,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "11",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot11"
+    },
+    {
+      "id": "rioa-slot11-ch0",
+      "kind": "device",
+      "x": 4220,
+      "y": 1000,
+      "name": "*pd-3500#1",
+      "cable": "2",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot11",
+        "channel": 0,
+        "tag": "rioa.slot11.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot11-ch1",
+      "kind": "device",
+      "x": 5180,
+      "y": 1000,
+      "name": "*dp-3500#1",
+      "cable": "1",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot11",
+        "channel": 1,
+        "tag": "rioa.slot11.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot12",
+      "kind": "module",
+      "x": 440,
+      "y": 1780,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "12",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot12"
+    },
+    {
+      "id": "rioa-slot12-ch0",
+      "kind": "device",
+      "x": 20,
+      "y": 1850,
+      "name": "*pd-3500#3",
+      "cable": "6",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot12",
+        "channel": 0,
+        "tag": "rioa.slot12.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot12-ch1",
+      "kind": "device",
+      "x": 980,
+      "y": 1850,
+      "name": "*dp-3500#3",
+      "cable": "5",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "rioa-slot12",
+        "channel": 1,
+        "tag": "rioa.slot12.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "rioa-slot13",
+      "kind": "module",
+      "x": 1840,
+      "y": 1780,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "13",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot13"
+    },
+    {
+      "id": "rioa-slot14",
+      "kind": "module",
+      "x": 3240,
+      "y": 1780,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "14",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot14"
+    },
+    {
+      "id": "rioa-slot15",
+      "kind": "module",
+      "x": 4640,
+      "y": 1780,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "15",
+      "rio": "RIO A",
+      "scheduleId": "rioa-slot15"
+    },
+    {
+      "id": "riob-slot1",
+      "kind": "module",
+      "x": 440,
+      "y": 2630,
+      "name": "DQ",
+      "type": "DQ",
+      "slot": "1",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot1"
+    },
+    {
+      "id": "riob-slot1-ch0",
+      "kind": "device",
+      "x": 20,
+      "y": 2700,
+      "name": "*v-3501#",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 0,
+        "tag": "riob.slot1.dq0",
+        "statusTag": "riob.slot1.dq0.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot1-ch1",
+      "kind": "device",
+      "x": 980,
+      "y": 2700,
+      "name": "*v-3511#-close",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 1,
+        "tag": "riob.slot1.dq1",
+        "statusTag": "riob.slot1.dq1.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot1-ch2",
+      "kind": "device",
+      "x": 20,
+      "y": 2870,
+      "name": "*v-3511#-open",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 2,
+        "tag": "riob.slot1.dq2",
+        "statusTag": "riob.slot1.dq2.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot1-ch3",
+      "kind": "device",
+      "x": 980,
+      "y": 2870,
+      "name": "*v-3521#",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 3,
+        "tag": "riob.slot1.dq3",
+        "statusTag": "riob.slot1.dq3.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot1-ch4",
+      "kind": "device",
+      "x": 20,
+      "y": 3040,
+      "name": "*v-3571#-y",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 4,
+        "tag": "riob.slot1.dq4",
+        "statusTag": "riob.slot1.dq4.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot1-ch5",
+      "kind": "device",
+      "x": 980,
+      "y": 3040,
+      "name": "*v-3571#2",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot1",
+        "channel": 5,
+        "tag": "riob.slot1.dq5",
+        "statusTag": "riob.slot1.dq5.wire_ok",
+        "pinType": "DQ"
+      }
+    },
+    {
+      "id": "riob-slot2",
+      "kind": "module",
+      "x": 1840,
+      "y": 2630,
+      "name": "AI",
+      "type": "AI",
+      "slot": "2",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot2"
+    },
+    {
+      "id": "riob-slot2-ch0",
+      "kind": "device",
+      "x": 1420,
+      "y": 2700,
+      "name": "*v-3501#_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 0,
+        "tag": "riob.slot2.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot2-ch1",
+      "kind": "device",
+      "x": 2380,
+      "y": 2700,
+      "name": "*v-3511#-close_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 1,
+        "tag": "riob.slot2.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot2-ch2",
+      "kind": "device",
+      "x": 1420,
+      "y": 2870,
+      "name": "*v-3511#-open_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 2,
+        "tag": "riob.slot2.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot2-ch3",
+      "kind": "device",
+      "x": 2380,
+      "y": 2870,
+      "name": "*v-3521#_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 3,
+        "tag": "riob.slot2.ai3",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot2-ch4",
+      "kind": "device",
+      "x": 1420,
+      "y": 3040,
+      "name": "*v-3571#-y_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 4,
+        "tag": "riob.slot2.ai4",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot2-ch5",
+      "kind": "device",
+      "x": 2380,
+      "y": 3040,
+      "name": "*v-3571#2_fb",
+      "cable": "",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot2",
+        "channel": 5,
+        "tag": "riob.slot2.ai5",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot3",
+      "kind": "module",
+      "x": 3240,
+      "y": 2630,
+      "name": "AI",
+      "type": "AI",
+      "slot": "3",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot3"
+    },
+    {
+      "id": "riob-slot3-ch0",
+      "kind": "device",
+      "x": 2820,
+      "y": 2700,
+      "name": "*v-3501#-pos",
+      "cable": "15",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot3",
+        "channel": 0,
+        "tag": "riob.slot3.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot3-ch1",
+      "kind": "device",
+      "x": 3780,
+      "y": 2700,
+      "name": "*v-3511#-pos",
+      "cable": "22",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot3",
+        "channel": 1,
+        "tag": "riob.slot3.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot3-ch2",
+      "kind": "device",
+      "x": 2820,
+      "y": 2870,
+      "name": "*v-3521#-pos",
+      "cable": "11",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot3",
+        "channel": 2,
+        "tag": "riob.slot3.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot3-ch3",
+      "kind": "device",
+      "x": 3780,
+      "y": 2870,
+      "name": "*v-3571#-y-pos",
+      "cable": "28",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot3",
+        "channel": 3,
+        "tag": "riob.slot3.ai3",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot3-ch4",
+      "kind": "device",
+      "x": 2820,
+      "y": 3040,
+      "name": "*v-3571#2-pos",
+      "cable": "27",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot3",
+        "channel": 4,
+        "tag": "riob.slot3.ai4",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot4",
+      "kind": "module",
+      "x": 4640,
+      "y": 2630,
+      "name": "AI RTD",
+      "type": "AI_RTD",
+      "slot": "4",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot4"
+    },
+    {
+      "id": "riob-slot4-ch0",
+      "kind": "device",
+      "x": 4220,
+      "y": 2700,
+      "name": "*th-3520#",
+      "cable": "12",
+      "wireCount": 4,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot4",
+        "channel": 0,
+        "tag": "riob.slot4.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot4-ch1",
+      "kind": "device",
+      "x": 4220,
+      "y": 2870,
+      "name": "*th-3531#",
+      "cable": "16",
+      "wireCount": 4,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot4",
+        "channel": 1,
+        "tag": "riob.slot4.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot4-ch2",
+      "kind": "device",
+      "x": 5180,
+      "y": 2700,
+      "name": "*th-3541#",
+      "cable": "18",
+      "wireCount": 4,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "red": "#e54b4b",
+        "black": "#202631",
+        "green": "#2b9b68",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot4",
+        "channel": 2,
+        "tag": "riob.slot4.ai2",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot5",
+      "kind": "module",
+      "x": 440,
+      "y": 3480,
+      "name": "AI RTD",
+      "type": "AI_RTD",
+      "slot": "5",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot5"
+    },
+    {
+      "id": "riob-slot8",
+      "kind": "module",
+      "x": 1840,
+      "y": 3480,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "8",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot8"
+    },
+    {
+      "id": "riob-slot8-ch0",
+      "kind": "device",
+      "x": 1420,
+      "y": 3550,
+      "name": "*pd-3500#2",
+      "cable": "4",
+      "wireCount": 2,
+      "cableSide": "left",
+      "wireSide": "right",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot8",
+        "channel": 0,
+        "tag": "riob.slot8.ai0",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot8-ch1",
+      "kind": "device",
+      "x": 2380,
+      "y": 3550,
+      "name": "*dp-3500#2",
+      "cable": "3",
+      "wireCount": 2,
+      "cableSide": "right",
+      "wireSide": "left",
+      "colors": {
+        "black": "#202631",
+        "white": "#ffffff"
+      },
+      "assignment": {
+        "moduleId": "riob-slot8",
+        "channel": 1,
+        "tag": "riob.slot8.ai1",
+        "statusTag": "",
+        "pinType": "AI"
+      }
+    },
+    {
+      "id": "riob-slot9",
+      "kind": "module",
+      "x": 3240,
+      "y": 3480,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "9",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot9"
+    },
+    {
+      "id": "riob-slot10",
+      "kind": "module",
+      "x": 4640,
+      "y": 3480,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "10",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot10"
+    },
+    {
+      "id": "riob-slot11",
+      "kind": "module",
+      "x": 440,
+      "y": 4330,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "11",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot11"
+    },
+    {
+      "id": "riob-slot12",
+      "kind": "module",
+      "x": 1840,
+      "y": 4330,
+      "name": "Ex-AI",
+      "type": "EX_AI",
+      "slot": "12",
+      "rio": "RIO B",
+      "scheduleId": "riob-slot12"
+    }
+  ],
+  "wires": [
+    {
+      "id": "rioa-slot1-ch0-white",
+      "from": "rioa-slot1-ch0:white",
+      "to": "rioa-slot1:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch1-white",
+      "from": "rioa-slot1-ch1:white",
+      "to": "rioa-slot1:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch2-white",
+      "from": "rioa-slot1-ch2:white",
+      "to": "rioa-slot1:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch3-white",
+      "from": "rioa-slot1-ch3:white",
+      "to": "rioa-slot1:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch4-white",
+      "from": "rioa-slot1-ch4:white",
+      "to": "rioa-slot1:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch5-white",
+      "from": "rioa-slot1-ch5:white",
+      "to": "rioa-slot1:ch5-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch6-white",
+      "from": "rioa-slot1-ch6:white",
+      "to": "rioa-slot1:ch6-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot1-ch7-white",
+      "from": "rioa-slot1-ch7:white",
+      "to": "rioa-slot1:ch7-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch0-black",
+      "from": "rioa-slot2-ch0:black",
+      "to": "rioa-slot2:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch0-white",
+      "from": "rioa-slot2-ch0:white",
+      "to": "rioa-slot2:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch1-black",
+      "from": "rioa-slot2-ch1:black",
+      "to": "rioa-slot2:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch1-white",
+      "from": "rioa-slot2-ch1:white",
+      "to": "rioa-slot2:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch2-black",
+      "from": "rioa-slot2-ch2:black",
+      "to": "rioa-slot2:ch2-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch2-white",
+      "from": "rioa-slot2-ch2:white",
+      "to": "rioa-slot2:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch3-black",
+      "from": "rioa-slot2-ch3:black",
+      "to": "rioa-slot2:ch3-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch3-white",
+      "from": "rioa-slot2-ch3:white",
+      "to": "rioa-slot2:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch4-black",
+      "from": "rioa-slot2-ch4:black",
+      "to": "rioa-slot2:ch4-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch4-white",
+      "from": "rioa-slot2-ch4:white",
+      "to": "rioa-slot2:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch5-black",
+      "from": "rioa-slot2-ch5:black",
+      "to": "rioa-slot2:ch5-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch5-white",
+      "from": "rioa-slot2-ch5:white",
+      "to": "rioa-slot2:ch5-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch6-black",
+      "from": "rioa-slot2-ch6:black",
+      "to": "rioa-slot2:ch6-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch6-white",
+      "from": "rioa-slot2-ch6:white",
+      "to": "rioa-slot2:ch6-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch7-black",
+      "from": "rioa-slot2-ch7:black",
+      "to": "rioa-slot2:ch7-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot2-ch7-white",
+      "from": "rioa-slot2-ch7:white",
+      "to": "rioa-slot2:ch7-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot3-ch0-white",
+      "from": "rioa-slot3-ch0:white",
+      "to": "rioa-slot3:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot3-ch1-white",
+      "from": "rioa-slot3-ch1:white",
+      "to": "rioa-slot3:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch0-black",
+      "from": "rioa-slot5-ch0:black",
+      "to": "rioa-slot5:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch0-white",
+      "from": "rioa-slot5-ch0:white",
+      "to": "rioa-slot5:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch1-black",
+      "from": "rioa-slot5-ch1:black",
+      "to": "rioa-slot5:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch1-white",
+      "from": "rioa-slot5-ch1:white",
+      "to": "rioa-slot5:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch2-black",
+      "from": "rioa-slot5-ch2:black",
+      "to": "rioa-slot5:ch2-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch2-white",
+      "from": "rioa-slot5-ch2:white",
+      "to": "rioa-slot5:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch3-black",
+      "from": "rioa-slot5-ch3:black",
+      "to": "rioa-slot5:ch3-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch3-white",
+      "from": "rioa-slot5-ch3:white",
+      "to": "rioa-slot5:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch4-black",
+      "from": "rioa-slot5-ch4:black",
+      "to": "rioa-slot5:ch4-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch4-white",
+      "from": "rioa-slot5-ch4:white",
+      "to": "rioa-slot5:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch5-black",
+      "from": "rioa-slot5-ch5:black",
+      "to": "rioa-slot5:ch5-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch5-white",
+      "from": "rioa-slot5-ch5:white",
+      "to": "rioa-slot5:ch5-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch6-black",
+      "from": "rioa-slot5-ch6:black",
+      "to": "rioa-slot5:ch6-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch6-white",
+      "from": "rioa-slot5-ch6:white",
+      "to": "rioa-slot5:ch6-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch7-black",
+      "from": "rioa-slot5-ch7:black",
+      "to": "rioa-slot5:ch7-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot5-ch7-white",
+      "from": "rioa-slot5-ch7:white",
+      "to": "rioa-slot5:ch7-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot11-ch0-black",
+      "from": "rioa-slot11-ch0:black",
+      "to": "rioa-slot11:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot11-ch0-white",
+      "from": "rioa-slot11-ch0:white",
+      "to": "rioa-slot11:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot11-ch1-black",
+      "from": "rioa-slot11-ch1:black",
+      "to": "rioa-slot11:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot11-ch1-white",
+      "from": "rioa-slot11-ch1:white",
+      "to": "rioa-slot11:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot12-ch0-black",
+      "from": "rioa-slot12-ch0:black",
+      "to": "rioa-slot12:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot12-ch0-white",
+      "from": "rioa-slot12-ch0:white",
+      "to": "rioa-slot12:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot12-ch1-black",
+      "from": "rioa-slot12-ch1:black",
+      "to": "rioa-slot12:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "rioa-slot12-ch1-white",
+      "from": "rioa-slot12-ch1:white",
+      "to": "rioa-slot12:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch0-white",
+      "from": "riob-slot1-ch0:white",
+      "to": "riob-slot1:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch1-white",
+      "from": "riob-slot1-ch1:white",
+      "to": "riob-slot1:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch2-white",
+      "from": "riob-slot1-ch2:white",
+      "to": "riob-slot1:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch3-white",
+      "from": "riob-slot1-ch3:white",
+      "to": "riob-slot1:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch4-white",
+      "from": "riob-slot1-ch4:white",
+      "to": "riob-slot1:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot1-ch5-white",
+      "from": "riob-slot1-ch5:white",
+      "to": "riob-slot1:ch5-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch0-black",
+      "from": "riob-slot2-ch0:black",
+      "to": "riob-slot2:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch0-white",
+      "from": "riob-slot2-ch0:white",
+      "to": "riob-slot2:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch1-black",
+      "from": "riob-slot2-ch1:black",
+      "to": "riob-slot2:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch1-white",
+      "from": "riob-slot2-ch1:white",
+      "to": "riob-slot2:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch2-black",
+      "from": "riob-slot2-ch2:black",
+      "to": "riob-slot2:ch2-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch2-white",
+      "from": "riob-slot2-ch2:white",
+      "to": "riob-slot2:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch3-black",
+      "from": "riob-slot2-ch3:black",
+      "to": "riob-slot2:ch3-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch3-white",
+      "from": "riob-slot2-ch3:white",
+      "to": "riob-slot2:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch4-black",
+      "from": "riob-slot2-ch4:black",
+      "to": "riob-slot2:ch4-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch4-white",
+      "from": "riob-slot2-ch4:white",
+      "to": "riob-slot2:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch5-black",
+      "from": "riob-slot2-ch5:black",
+      "to": "riob-slot2:ch5-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot2-ch5-white",
+      "from": "riob-slot2-ch5:white",
+      "to": "riob-slot2:ch5-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch0-black",
+      "from": "riob-slot3-ch0:black",
+      "to": "riob-slot3:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch0-white",
+      "from": "riob-slot3-ch0:white",
+      "to": "riob-slot3:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch1-black",
+      "from": "riob-slot3-ch1:black",
+      "to": "riob-slot3:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch1-white",
+      "from": "riob-slot3-ch1:white",
+      "to": "riob-slot3:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch2-black",
+      "from": "riob-slot3-ch2:black",
+      "to": "riob-slot3:ch2-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch2-white",
+      "from": "riob-slot3-ch2:white",
+      "to": "riob-slot3:ch2-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch3-black",
+      "from": "riob-slot3-ch3:black",
+      "to": "riob-slot3:ch3-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch3-white",
+      "from": "riob-slot3-ch3:white",
+      "to": "riob-slot3:ch3-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch4-black",
+      "from": "riob-slot3-ch4:black",
+      "to": "riob-slot3:ch4-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot3-ch4-white",
+      "from": "riob-slot3-ch4:white",
+      "to": "riob-slot3:ch4-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot8-ch0-black",
+      "from": "riob-slot8-ch0:black",
+      "to": "riob-slot8:ch0-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot8-ch0-white",
+      "from": "riob-slot8-ch0:white",
+      "to": "riob-slot8:ch0-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot8-ch1-black",
+      "from": "riob-slot8-ch1:black",
+      "to": "riob-slot8:ch1-minus",
+      "color": "#202631",
+      "width": 2.5
+    },
+    {
+      "id": "riob-slot8-ch1-white",
+      "from": "riob-slot8-ch1:white",
+      "to": "riob-slot8:ch1-plus",
+      "color": "#ffffff",
+      "width": 2.5
+    }
+  ],
+  "settings": {
+    "grid": 10,
+    "snap": true,
+    "defaultWidth": 2.5,
+    "autoRoute": false
+  },
+  "sourceSchedule": "rio-schedule-v1",
+  "labelSizeRevision": "210x60-v1"
+}

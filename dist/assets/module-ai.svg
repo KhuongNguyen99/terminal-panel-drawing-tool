@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="228" height="1288" viewBox="0 0 57 322">
+  <title>Siemens AI 8xI 2-/4-wire BA, 6ES7134-6GF00-0AA1</title>
+  <desc>Vector reconstruction of the supplied front-view module and terminal base. Original silhouette, status indicators, face labeling and circular terminal positions are retained. Channel callout arrows belong to the editor and are excluded from this hardware asset.</desc>
+  <defs>
+    <g id="contact-dark">
+      <rect x="-2.05" y="-5.1" width="4.1" height="10.2" rx=".45" fill="#5e605f" stroke="#525453" stroke-width=".5"/>
+      <path d="M-1.1-4.6V4.5M1.1-4.6V4.5" fill="none" stroke="#929493" stroke-width=".5"/>
+      <path d="M-1.45-1.5H1.45M-1.45 1.7H1.45" fill="none" stroke="#535554" stroke-width=".6"/>
+    </g>
+    <g id="contact-light">
+      <rect x="-2.05" y="-5.1" width="4.1" height="10.2" rx=".45" fill="#5c605d" stroke="#535653" stroke-width=".5"/>
+      <rect x="-1.25" y="-4.5" width="2.5" height="9" rx=".25" fill="#e4e9e5"/>
+      <path d="M-1.3-4.3V4.2" fill="none" stroke="#fafbf9" stroke-width=".45"/>
+    </g>
+    <g id="socket">
+      <circle r="5.7" fill="#7a7b79" stroke="#5f625f" stroke-width=".65"/>
+      <path d="M-3.5-4.1C-5.5-2.5-5.5 2.6-3.5 4.1M3.5-4.1C5.5-2.5 5.5 2.6 3.5 4.1" fill="none" stroke="#8a8c89" stroke-width=".35"/>
+      <path d="M-1.8-4.7V-2.9M1.8-4.7V-2.9M-1.8 2.9V4.7M1.8 2.9V4.7" fill="none" stroke="#737673" stroke-width=".4"/>
+    </g>
+    <g id="row-dark">
+      <use xlink:href="#contact-dark" x="17.5"/>
+      <use xlink:href="#socket" x="28"/>
+      <use xlink:href="#socket" x="40.5"/>
+      <use xlink:href="#contact-dark" x="51.4"/>
+    </g>
+    <g id="row-light">
+      <use xlink:href="#contact-light" x="17.5"/>
+      <use xlink:href="#socket" x="28"/>
+      <use xlink:href="#socket" x="40.5"/>
+      <use xlink:href="#contact-light" x="51.4"/>
+    </g>
+  </defs>
+
+  <!-- Molded side lugs and mounting features from the reference. -->
+  <path d="M4 19.7H13.4V64.5H4Z" fill="#757575" stroke="#686868" stroke-width=".45"/>
+  <path d="M5.2 20.9V63.1H12.7" fill="none" stroke="#828282" stroke-width=".5"/>
+  <path d="M2 164.7L8.9 160.6H10.2V166.1H13.5V172.7H2Z" fill="#757575" stroke="#686868" stroke-width=".45"/>
+
+  <!-- Electronics housing and the raised top latch. -->
+  <rect x="13.1" y="3.1" width="42.7" height="194.5" fill="#757575" stroke="#5b5b5b" stroke-width=".65"/>
+  <rect x="13.7" y="3.7" width="41.5" height="6.5" fill="#656565"/>
+  <path d="M14 6H28.6M38.3 6H54.8" stroke="#515151" stroke-width=".6"/>
+  <path d="M29.1.6H38V6.9H29.1Z" fill="#777" stroke="#5d5d5d" stroke-width=".6"/>
+  <path d="M29.9 1.3H37.1" stroke="#8c8c8c" stroke-width=".45"/>
+  <path d="M14 10.3H55M14.3 26.2H55M14.3 31.4H55M14.3 38.6H55" fill="none" stroke="#666" stroke-width=".45"/>
+  <g font-family="Arial,Helvetica,sans-serif" fill="#373737">
+    <text x="14.7" y="18" font-size="5.9" textLength="6.4" lengthAdjust="spacingAndGlyphs">AI</text>
+    <text x="48.1" y="18" font-size="5.6" textLength="5.7" lengthAdjust="spacingAndGlyphs">BA</text>
+    <text x="14.7" y="24.6" font-size="4.7" textLength="31.5" lengthAdjust="spacingAndGlyphs">8xI 2-/4-wire</text>
+    <text x="14.8" y="36.5" font-size="4.5" textLength="11.8" lengthAdjust="spacingAndGlyphs">DIAG</text>
+  </g>
+  <rect x="15.4" y="28.7" width="3.05" height="2.55" fill="#e3e5e2" stroke="#9fa09d" stroke-width=".3"/>
+
+  <!-- Unprinted front cover: no inferred wiring diagram or QR code. -->
+  <path d="M15.5 40.7H53.2V47.8L51.7 50.1V114L53.2 116.3V128.6H15.5V116.3L17 114V50.1L15.5 47.8Z" fill="#757575" stroke="#5e5e5e" stroke-width=".65"/>
+  <path d="M15.9 41.1H52.8V44.6H15.9Z" fill="#696969"/>
+  <path d="M18 52.1V113M50.6 52.1V113M17.4 126.8H51.4" fill="none" stroke="#6a6a6a" stroke-width=".5"/>
+  <path d="M14.1 39.6V129.8H54.6V39.6" fill="none" stroke="#828282" stroke-width=".35"/>
+
+  <!-- Four paired status LEDs, original violet identification window. -->
+  <g fill="#e1e4df" stroke="#a1a59e" stroke-width=".35">
+    <rect x="15.2" y="133.1" width="3.3" height="2.7"/>
+    <rect x="15.2" y="138.3" width="3.3" height="2.7"/>
+    <rect x="15.2" y="143.5" width="3.3" height="2.7"/>
+    <rect x="15.2" y="148.7" width="3.3" height="2.7"/>
+    <rect x="26.6" y="133.1" width="3.3" height="2.7"/>
+    <rect x="26.6" y="138.3" width="3.3" height="2.7"/>
+    <rect x="26.6" y="143.5" width="3.3" height="2.7"/>
+    <rect x="26.6" y="148.7" width="3.3" height="2.7"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="3.4" fill="#343434">
+    <text x="19.3" y="135.8">AI0</text><text x="30.7" y="135.8">AI1</text>
+    <text x="19.3" y="141">AI2</text><text x="30.7" y="141">AI3</text>
+    <text x="19.3" y="146.2">AI4</text><text x="30.7" y="146.2">AI5</text>
+    <text x="19.3" y="151.4">AI6</text><text x="30.7" y="151.4">AI7</text>
+  </g>
+  <rect x="39.4" y="132.5" width="14.5" height="14.4" fill="#716d97" stroke="#64616e" stroke-width=".6"/>
+  <rect x="40.4" y="134.1" width="12.4" height="11.9" fill="#8b84ca"/>
+  <path d="M41 134.8H52.1" stroke="#9a93d5" stroke-width=".45"/>
+
+  <!-- Power indicator, color code, and original model identifier. -->
+  <rect x="15.4" y="176.4" width="3.15" height="2.7" fill="#e1e4df" stroke="#a1a59e" stroke-width=".35"/>
+  <g font-family="Arial,Helvetica,sans-serif" fill="#383838">
+    <text x="19.4" y="179" font-size="3.6" textLength="8.7" lengthAdjust="spacingAndGlyphs">PWR</text>
+    <!-- Original tiny color-code marking is contour-traced; its text is not inferred. -->
+    <g id="source-color-code-marking"><path d="M52 176h1v1h-1Z M53 177h1v1h-1Z M53 179h1v1h-1Z" fill="#707070"/><path d="M46 176h1v1h-1Z M51 176h1v1h-1Z M45 177h1v1h-1Z M47 178h1v1h-1Z M48 178h1v1h-1Z M52 178h1v1h-1Z" fill="#686868"/><path d="M45 176h1v1h-1Z M47 176h1v1h-1Z M48 176h1v1h-1Z M49 176h1v1h-1Z M50 176h1v1h-1Z M47 177h1v1h-1Z M52 177h1v1h-1Z M46 178h1v1h-1Z M49 178h1v1h-1Z M46 179h1v1h-1Z M51 179h1v1h-1Z M52 179h1v1h-1Z" fill="#606060"/><path d="M44 176h1v1h-1Z M46 177h1v1h-1Z M48 177h1v1h-1Z M49 177h1v1h-1Z M51 177h1v1h-1Z M45 179h1v1h-1Z M48 179h1v1h-1Z" fill="#585858"/><path d="M44 177h1v1h-1Z M50 177h1v1h-1Z M44 178h1v1h-1Z M50 178h1v1h-1Z M51 178h1v1h-1Z M44 179h1v1h-1Z M47 179h1v1h-1Z M49 179h1v1h-1Z M50 179h1v1h-1Z" fill="#505050"/></g>
+    <text x="14.6" y="189.8" font-size="3.4" textLength="39.9" lengthAdjust="spacingAndGlyphs">6ES7134-6GF00-0AA1</text>
+  </g>
+  <rect x="13.3" y="192.7" width="42.2" height="5.1" fill="#353535"/>
+  <path d="M14 193.5H55M14 197.4H55" fill="none" stroke="#282828" stroke-width=".55"/>
+
+  <!-- Terminal BaseUnit. Original circle centers are preserved exactly. -->
+  <path d="M0 236.4H13.6V245.2H0Z" fill="#7b7c7a" stroke="#666966" stroke-width=".4"/>
+  <path d="M0 254.3H13.6V259.5H0Z" fill="#777977" stroke="#646764" stroke-width=".4"/>
+  <path d="M0 266H4.6L8.8 264.4L10.3 266H13.6V269.4H0Z" fill="#7a7b79" stroke="#666966" stroke-width=".4"/>
+  <path d="M3.2 273.7H13.6V280.1H8.3V281.3H5.5V280.1H3.2Z" fill="#777a77" stroke="#646864" stroke-width=".45"/>
+  <rect x="13.2" y="198.5" width="42.6" height="122.1" fill="#777a77" stroke="#595e59" stroke-width=".65"/>
+  <path d="M14.2 199.3H54.8V315.6H14.2Z" fill="none" stroke="#969a93" stroke-width=".45"/>
+  <path d="M20.9 200.1V296.9M47.5 200.1V296.9" fill="none" stroke="#646964" stroke-width=".6"/>
+  <use xlink:href="#row-dark" y="207"/>
+  <use xlink:href="#row-dark" y="219"/>
+  <use xlink:href="#row-dark" y="231"/>
+  <use xlink:href="#row-dark" y="243"/>
+  <use xlink:href="#row-light" y="255.5"/>
+  <use xlink:href="#row-light" y="268"/>
+  <use xlink:href="#row-light" y="280"/>
+  <use xlink:href="#row-light" y="292"/>
+  <g fill="none" stroke="#646864" stroke-width=".45">
+    <path d="M14 213H55M14 225H55M14 237H55M14 249H55M14 261.7H55M14 274H55M14 286H55M14 298H55"/>
+  </g>
+  <path d="M28.3 199.3H37.3V202.7H28.3Z" fill="#888986" stroke="#5f635e" stroke-width=".5"/>
+  <path d="M15.4 299.6H19.6V312.8H15.4ZM49.1 299.6H53.6V312.8H49.1Z" fill="#565d55" stroke="#4e544d" stroke-width=".5"/>
+  <path d="M16.4 301.2H18.7V311.2H16.4Z" fill="#982632"/>
+  <path d="M50.1 301.2H52.7V311.2H50.1Z" fill="#2e2b97"/>
+  <path d="M16.7 302.1H18.4M50.4 302.1H52.3" stroke="#a15057" stroke-width=".35"/>
+  <use xlink:href="#socket" x="28" y="305.8"/>
+  <use xlink:href="#socket" x="40.5" y="305.8"/>
+  <path d="M13.5 315.8H55.5V320.8H13.5Z" fill="#747675" stroke="#60655f" stroke-width=".45"/>
+  <path d="M18.1 316.6H50.3V319.2H18.1Z" fill="none" stroke="#878c84" stroke-width=".4"/>
+  <path d="M15 320.9H54.5" stroke="#4e534d" stroke-width=".7"/>
+</svg>

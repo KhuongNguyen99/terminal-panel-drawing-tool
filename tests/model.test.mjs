@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { CONDUCTORS, DEVICE_WIDTH, DEVICE_HEIGHT, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, applyCompactLabelSize, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, geometry, normalizeProject, boundsOf, escapeXML, safeColor } from '../dist/model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_WIDTH, DEVICE_HEIGHT, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, applyCompactLabelSize, applyFourWireOrder, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, geometry, normalizeProject, boundsOf, escapeXML, safeColor } from '../dist/model.js';
 
 const device = (extra = {}) => ({ id: 'device-1', kind: 'device', name: '*v-3501#-y-pos', cable: '17', x: 40, y: 100, wireCount: 2, cableSide: 'left', wireSide: 'right', colors: {}, ...extra });
 const module = (extra = {}) => ({ id: 'module-1', kind: 'module', type: 'AI', name: 'Analog input', slot: '5', rio: 'RIO A', x: 500, y: 30, ...extra });
 const wire = (extra = {}) => ({ id: 'wire-1', from: 'device-1:black', to: 'module-1:ch0-minus', color: '#202631', width: 2.5, ...extra });
-const project = (extra = {}) => ({ version: 1, title: 'RIO A · Slot 5', nodes: [device(), module()], wires: [wire()], settings: { grid: 10, snap: true, defaultWidth: 2.5 }, ...extra });
+const project = (extra = {}) => ({ version: 1, title: 'RIO A · Slot 5', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION, nodes: [device(), module()], wires: [wire()], settings: { grid: 10, snap: true, defaultWidth: 2.5 }, ...extra });
 const normalize = value => normalizeProject(value, MODULE_TYPES);
 
 test('editable project survives JSON save/reopen without changing its normalized wiring', () => {
@@ -69,7 +69,7 @@ test('2-wire and 4-wire ports keep conductor identity when changed or flipped', 
   const two = geometry([n], MODULE_TYPES).ports;
   const four = geometry([{ ...n, wireCount: 4 }], MODULE_TYPES).ports;
   assert.deepEqual(Object.keys(two), ['device-1:black', 'device-1:white']);
-  assert.deepEqual(Object.keys(four), ['device-1:red', 'device-1:black', 'device-1:green', 'device-1:white']);
+  assert.deepEqual(Object.keys(four), ['device-1:red', 'device-1:black', 'device-1:white', 'device-1:green']);
   assert.deepEqual(Object.values(two).map(p => [p.x, p.y]), [[260, 90], [260, 110]]);
   Object.values(four).forEach((p, i) => assert.ok(Math.abs(p.y - [80, 70 + 70 / 3, 70 + 110 / 3, 120][i]) < 1e-8));
   assert.equal(deviceHeight(n), 60);
@@ -87,7 +87,7 @@ test('custom label size moves wire endpoints with the label edge and resizes its
   assert.deepEqual(obstacles[0], { id: n.id, nodeId: n.id, x: 50, y: 70, width: 420, height: 160 });
   const four = { ...n, wireCount: 4, wireSide: 'left' };
   const left = Object.values(geometry([four], MODULE_TYPES).ports);
-  assert.deepEqual(left.map(p => p.localId), ['red', 'black', 'green', 'white']);
+  assert.deepEqual(left.map(p => p.localId), ['red', 'black', 'white', 'green']);
   assert.ok(left.every(p => p.x === 50 && p.side === 'left'));
   assert.deepEqual(left.map(p => p.y), [90, 130, 170, 210]);
   const minimum = { ...four, height: 80 };
@@ -186,6 +186,99 @@ const manualRoute = () => ({
   points: [{ x: 250, y: 120 }, { x: 320, y: 120 }, { x: 320, y: 340 }, { x: 560, y: 340 }],
   from: { x: 250, y: 120, side: 'right' },
   to: { x: 560, y: 340, side: 'left' },
+});
+
+function legacyFourWireProject(wireSide = 'right', wireCount = 4) {
+  const four = device({ wireCount, wireSide, width: 210, height: 100, x: wireSide === 'left' ? 900 : 40, colors: { red: '#A12345', black: '#121212' } });
+  const two = device({ id: 'device-2', wireSide, x: four.x, y: 700, colors: { black: '#123abc', white: '#FFFFFF' } });
+  const m = module({ x: wireSide === 'left' ? 400 : 600 });
+  const ports = geometry([m], MODULE_TYPES).ports;
+  const channels = wireSide === 'left' ? [1, 3, 7] : [0, 2, 6];
+  const roles = ['red', 'black', 'green', 'white'];
+  const colors = ['#A12345', '#121212', '#2b9b68', '#ffffff'];
+  const wires = roles.map((role, i) => {
+    const from = { x: four.x + (wireSide === 'right' ? 210 : 0), y: four.y + devicePortY(four, i), side: wireSide };
+    const target = `${m.id}:ch${channels[Math.floor(i / 2)]}-${i % 2 ? 'plus' : 'minus'}`;
+    const to = { x: ports[target].x, y: ports[target].y, side: ports[target].side };
+    const route = offset => ({
+      points: [{ x: from.x, y: from.y }, { x: (from.x + to.x) / 2 + offset, y: from.y }, { x: (from.x + to.x) / 2 + offset, y: to.y }, { x: to.x, y: to.y }],
+      from: { ...from }, to: { ...to },
+    });
+    return wire({ id: `four-${role}`, from: `${four.id}:${role}`, to: target, color: colors[i], width: 4, manual: route(0), savedRoute: route(20) });
+  });
+  wires.push(
+    wire({ id: 'two-black', from: `${two.id}:black`, to: `${m.id}:ch${channels[2]}-minus`, color: '#123abc' }),
+    wire({ id: 'two-white', from: `${two.id}:white`, to: `${m.id}:ch${channels[2]}-plus`, color: '#FFFFFF' }),
+  );
+  const input = project({ nodes: [four, two, m], wires });
+  delete input.fourWireOrderRevision;
+  return input;
+}
+
+test('legacy four-wire colors swap once without moving terminals, channels, or saved bends', () => {
+  for (const side of ['left', 'right']) for (const count of [4, '4']) {
+    const input = legacyFourWireProject(side, count), before = structuredClone(input);
+    const unchanged = normalize({ ...input, fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION });
+    const result = normalize(input), ports = geometry(result.nodes, MODULE_TYPES).ports;
+    assert.equal(result.fourWireOrderRevision, FOUR_WIRE_ORDER_REVISION);
+    assert.deepEqual(input, before, 'importing must not mutate source data');
+    assert.deepEqual({ ...result.nodes[0], colors: undefined }, { ...unchanged.nodes[0], colors: undefined });
+    assert.deepEqual(result.nodes.slice(1), unchanged.nodes.slice(1), 'two-wire devices and modules remain unchanged');
+    assert.deepEqual(result.nodes[0].colors, { red: '#A12345', black: '#121212', white: '#ffffff', green: '#2b9b68' });
+    for (const original of before.wires) {
+      const next = result.wires.find(w => w.id === original.id);
+      if (original.id.startsWith('two-') || original.id === 'four-red' || original.id === 'four-black') {
+        assert.deepEqual(next, unchanged.wires.find(w => w.id === original.id));
+      }
+      if (!original.id.startsWith('four-')) continue;
+      const oldRole = original.from.split(':')[1];
+      const newRole = oldRole === 'green' ? 'white' : oldRole === 'white' ? 'green' : oldRole;
+      assert.equal(next.from, `device-1:${newRole}`);
+      assert.equal(next.to, original.to, 'the connected module terminal does not change');
+      assert.equal(next.width, original.width);
+      assert.equal(next.color, oldRole === 'green' ? '#ffffff' : oldRole === 'white' ? '#2b9b68' : original.color);
+      assert.deepEqual(next.manual, original.manual);
+      assert.deepEqual(next.savedRoute, original.savedRoute);
+      assert.deepEqual({ x: ports[next.from].x, y: ports[next.from].y, side: ports[next.from].side }, original.manual.from, 'the recolored conductor retains its physical position');
+    }
+    assert.deepEqual(normalize(JSON.parse(JSON.stringify(result))), result, 'save/open must not swap again');
+    const reapplied = structuredClone(result);
+    applyFourWireOrder(reapplied);
+    assert.deepEqual(reapplied, result, 'an already stamped project is not migrated twice');
+  }
+});
+
+test('legacy four-wire migration preserves custom colors and already swapped choices', () => {
+  for (const [conductor, cable, expectedConductor, expectedCable] of [
+    [{ green: '#12aBcD', white: '#654321' }, { green: '#aa00ff', white: '#ffff00' }, { white: '#12aBcD', green: '#654321' }, { white: '#aa00ff', green: '#ffff00' }],
+    [{ green: '#ffffff', white: '#2b9b68' }, { green: '#ffffff', white: '#2B9B68' }, { white: '#ffffff', green: '#2b9b68' }, { white: '#ffffff', green: '#2B9B68' }],
+    [{ green: '#2B9B68', white: '#FFFFFF' }, { green: '#2B9B68', white: '#FFFFFF' }, { white: '#ffffff', green: '#2b9b68' }, { white: '#ffffff', green: '#2b9b68' }],
+  ]) {
+    const input = legacyFourWireProject();
+    Object.assign(input.nodes[0].colors, conductor);
+    for (const role of ['green', 'white']) input.wires.find(w => w.id === `four-${role}`).color = cable[role];
+    const result = normalize(input);
+    for (const role of ['white', 'green']) {
+      assert.equal(result.nodes[0].colors[role], expectedConductor[role]);
+      assert.equal(result.wires.find(w => w.from === `device-1:${role}`).color, expectedCable[role]);
+    }
+    assert.deepEqual(normalize(JSON.parse(JSON.stringify(result))), result);
+  }
+});
+
+test('legacy reversed four-wire connections migrate with their original route geometry', () => {
+  const input = legacyFourWireProject('left', '4');
+  const expected = normalize(structuredClone(input));
+  for (const wire of input.wires.filter(w => ['four-green', 'four-white'].includes(w.id))) {
+    [wire.from, wire.to] = [wire.to, wire.from];
+    for (const key of ['manual', 'savedRoute']) {
+      const route = wire[key];
+      wire[key] = { points: route.points.slice().reverse(), from: route.to, to: route.from };
+    }
+  }
+  const before = structuredClone(input);
+  assert.deepEqual(normalize(input), expected, 'reversed imports retain the same recolored connections and bends');
+  assert.deepEqual(input, before);
 });
 
 test('manual segment geometry and endpoint anchors survive save and reopen', () => {
@@ -322,7 +415,7 @@ test('color and numeric settings sanitize safely without retaining CSS values', 
   });
   const result = normalize(source);
   assert.equal(result.nodes[0].wireCount, 4);
-  assert.deepEqual(result.nodes[0].colors, { red: '#ABCDEF', black: CONDUCTORS[4][1].color, green: CONDUCTORS[4][2].color, white: '#ffffff' });
+  assert.deepEqual(result.nodes[0].colors, { red: '#ABCDEF', black: CONDUCTORS[4][1].color, green: CONDUCTORS[4].find(c => c.key === 'green').color, white: '#ffffff' });
   assert.equal(result.nodes[0].cableSide, 'left');
   assert.equal(result.nodes[0].wireSide, 'right');
   assert.equal(result.wires[0].color, CONDUCTORS[4][1].color);

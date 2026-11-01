@@ -47,6 +47,8 @@ Projects autosave in browser-local storage. **Save project** downloads an editab
 
 All device labels use **210 × 60 px** by default, including four-wire cables. Existing saved projects receive this requested size once when opened; later manual size changes remain editable and persist. Four-wire conductors use separate, non-overlapping hit areas within the compact label.
 
+Four-wire cables use **red, black, white, green** from top to bottom. Older saved projects receive this color-order update once when opened: the third and fourth conductors and their connected wires receive the new default colors while retaining their physical endpoints, module connections, and saved paths. Custom colors stay with their existing physical conductors. Two-wire cables continue to use black and white.
+
 ## Populated RIO schedule
 
 **Full RIO schedule** opens `?project=rio-schedule` in its own autosaved workspace, preserving the previous project. The supplied sheets are populated as 22 modules, 100 physical channels, 56 device labels, and 44 spares. All 26 handwritten cable numbers are included; the other 30 assigned device labels have blank cable numbers. The default for a new browser with no saved work is also the complete schedule.

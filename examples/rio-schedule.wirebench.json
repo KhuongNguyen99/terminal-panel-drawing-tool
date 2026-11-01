@@ -653,8 +653,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "rioa-slot7",
@@ -677,8 +677,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "rioa-slot7",
@@ -701,8 +701,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "rioa-slot7",
@@ -725,8 +725,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "rioa-slot7",
@@ -1321,8 +1321,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "riob-slot4",
@@ -1345,8 +1345,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "riob-slot4",
@@ -1369,8 +1369,8 @@
       "colors": {
         "red": "#e54b4b",
         "black": "#202631",
-        "green": "#2b9b68",
-        "white": "#ffffff"
+        "white": "#ffffff",
+        "green": "#2b9b68"
       },
       "assignment": {
         "moduleId": "riob-slot4",
@@ -2074,5 +2074,6 @@
     "autoRoute": false
   },
   "sourceSchedule": "rio-schedule-v1",
-  "labelSizeRevision": "210x60-v1"
+  "labelSizeRevision": "210x60-v1",
+  "fourWireOrderRevision": "white-before-green-v1"
 }

@@ -2,8 +2,9 @@ import { normalizeManualRoute } from './manual-routing.js';
 
 export const CONDUCTORS = {
   2: [{ key: 'black', name: 'Black', color: '#202631' }, { key: 'white', name: 'White', color: '#ffffff' }],
-  4: [{ key: 'red', name: 'Red', color: '#e54b4b' }, { key: 'black', name: 'Black', color: '#202631' }, { key: 'green', name: 'Green', color: '#2b9b68' }, { key: 'white', name: 'White', color: '#ffffff' }]
+  4: [{ key: 'red', name: 'Red', color: '#e54b4b' }, { key: 'black', name: 'Black', color: '#202631' }, { key: 'white', name: 'White', color: '#ffffff' }, { key: 'green', name: 'Green', color: '#2b9b68' }]
 };
+export const FOUR_WIRE_ORDER_REVISION = 'white-before-green-v1';
 export const DEVICE_WIDTH = 210;
 export const DEVICE_HEIGHT = 60;
 export const DEVICE_MIN_WIDTH = 160;
@@ -36,6 +37,43 @@ export function applyCompactLabelSize(project) {
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const escapeXML = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 export const safeColor = (value, fallback = '#202631') => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : fallback;
+
+// Upgrade the old third/fourth conductor colors without moving their physical
+// terminals, module connections, or saved route geometry. Custom colors stay
+// with the same physical conductor; only its previous default is replaced.
+export function applyFourWireOrder(project) {
+  if (project.fourWireOrderRevision === FOUR_WIRE_ORDER_REVISION) return false;
+  const replacements = {
+    green: { key: 'white', previous: '#2b9b68', color: '#ffffff' },
+    white: { key: 'green', previous: '#ffffff', color: '#2b9b68' },
+  };
+  const updatedColor = (value, replacement) => {
+    const color = safeColor(value, replacement.previous);
+    return color.toLowerCase() === replacement.previous ? replacement.color : color;
+  };
+  const fourWireIds = new Set();
+  for (const node of project.nodes) {
+    if (node.kind !== 'device' || Number(node.wireCount) !== 4) continue;
+    fourWireIds.add(node.id);
+    const previous = node.colors || {};
+    node.colors = {
+      ...previous,
+      white: updatedColor(previous.green, replacements.green),
+      green: updatedColor(previous.white, replacements.white),
+    };
+  }
+  // normalizeProject has already oriented imported wires device -> module.
+  for (const wire of project.wires) {
+    const [nodeId, key] = wire.from.split(':');
+    const replacement = replacements[key];
+    if (!fourWireIds.has(nodeId) || !replacement) continue;
+    wire.from = `${nodeId}:${replacement.key}`;
+    wire.color = updatedColor(wire.color, replacement);
+  }
+  project.fourWireOrderRevision = FOUR_WIRE_ORDER_REVISION;
+  return true;
+}
+
 export const snap = (value, grid = 10) => Math.round(value / grid) * grid;
 export const makeId = (prefix = 'n') => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -126,7 +164,9 @@ export function normalizeProject(input, types) {
     return { id, from: from.id, to: to.id, color: safeColor(raw.color, from.color), width: Math.max(1, Math.min(8, Number(raw.width) || 2.5)), ...routeGeometry };
   });
   const settings = { grid: [5, 10, 20].includes(Number(input.settings?.grid)) ? Number(input.settings.grid) : 10, snap: input.settings?.snap !== false, defaultWidth: Math.max(1, Math.min(8, Number(input.settings?.defaultWidth) || 2.5)), autoRoute: input.settings?.autoRoute === true };
-  return { version: 1, title: str(input.title || 'Untitled wiring'), nodes, wires, settings, ...(input.sourceSchedule === 'rio-schedule-v1' ? { sourceSchedule: input.sourceSchedule } : {}), ...(input.labelSizeRevision === '210x60-v1' ? { labelSizeRevision: input.labelSizeRevision } : {}) };
+  const project = { version: 1, title: str(input.title || 'Untitled wiring'), nodes, wires, settings, ...(input.sourceSchedule === 'rio-schedule-v1' ? { sourceSchedule: input.sourceSchedule } : {}), ...(input.labelSizeRevision === '210x60-v1' ? { labelSizeRevision: input.labelSizeRevision } : {}), ...(input.fourWireOrderRevision === FOUR_WIRE_ORDER_REVISION ? { fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION } : {}) };
+  applyFourWireOrder(project);
+  return project;
 }
 
 export function boundsOf(nodes, types, routes = {}) {

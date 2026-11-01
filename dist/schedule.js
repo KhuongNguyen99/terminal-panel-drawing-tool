@@ -1,5 +1,5 @@
 import { MODULE_TYPES } from './modules.js';
-import { CONDUCTORS } from './model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION } from './model.js';
 
 // Transcribed from the two supplied RIO sheets. Empty channels are spares;
 // .wire_ok rows are status metadata, not additional physical connections.
@@ -117,7 +117,7 @@ export function createScheduleProject() {
     }
   });
   return {
-    version: 1, title: 'RIO A + RIO B · Complete channel schedule', sourceSchedule: 'rio-schedule-v1', labelSizeRevision: '210x60-v1',
+    version: 1, title: 'RIO A + RIO B · Complete channel schedule', sourceSchedule: 'rio-schedule-v1', labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION,
     nodes, wires, settings: { grid: 10, snap: true, defaultWidth: 2.5, autoRoute: false },
   };
 }

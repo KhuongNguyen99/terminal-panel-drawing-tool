@@ -67,8 +67,8 @@
 .assignment-card code,.channel-row code{font-size:9px;color:#668078;overflow-wrap:anywhere}
 .assignment-card>small{font-size:10px;color:#6e827b}
 .mapping-note{font-size:10px;line-height:16px;padding-top:8px;border-top:1px solid #d4e7df;color:#7c623a}
-.channel-schedule{margin:20px 0}
-.channel-schedule h3{font-size:11px;margin:0 0 10px}
+.channel-schedule,.terminal-row-names{margin:20px 0}
+.channel-schedule h3,.terminal-row-names h3{font-size:11px;margin:0 0 10px}
 .channel-row{display:flex;gap:9px;text-align:left;align-items:flex-start;width:100%;border:1px solid var(--line);background:#fff;border-radius:6px;padding:9px 8px;margin-top:5px}
 button.channel-row:hover{border-color:#8db8aa;background:#f0f7f3}
 .channel-row>span:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}

@@ -113,8 +113,8 @@ for (const side of ['left', 'right']) {
 
 // The approved ten-terminal image is 2384 × 2055 px. Its columns are 232 px
 // apart; scaling that pitch to 60 editor units keeps the connection dots on
-// the grid without stretching the artwork. The outermost circular openings
-// supply the single exposed connector row requested at each end of the bank.
+// the grid without stretching the artwork. Each logical connector addresses
+// the pair of circular wire openings at that end of its physical terminal.
 const dinScale = 60 / 232;
 const dinBody = Object.freeze({
   x: (640 - 2384 * dinScale) / 2, y: 60,
@@ -127,6 +127,10 @@ const dinPorts = ['top', 'bottom'].flatMap(side => Array.from({ length: 10 }, (_
   x: 50 + channel * 60, y: side === 'top' ? 0 : 650,
   pinX: dinBody.x + (162 + channel * 232) * dinScale,
   pinY: dinBody.y + (side === 'top' ? 194.5 : 1859.2) * dinScale,
+  pinTargets: Object.freeze((side === 'top' ? [194.5, 443.8] : [1859.2, 1609.3]).map(sourceY => Object.freeze({
+    x: dinBody.x + (162 + channel * 232) * dinScale,
+    y: dinBody.y + sourceY * dinScale,
+  }))),
   group: side === 'top' ? 'Top row' : 'Bottom row',
 })));
 
@@ -142,10 +146,13 @@ export const MODULE_TYPES = Object.freeze({
   EX_AI: template('EX_AI', 'Ex-AI', '2 × I · 2-wire HART', 'assets/module-ex-ai.svg', exBody, exPorts,
     'The CH0 and CH1 negative/positive terminals annotated in your Ex-AI reference.'),
   DIN_RESISTOR: template('DIN_RESISTOR', 'DIN Resistor Rail Terminal Block', '10 terminals · 10 top + 10 bottom connectors', 'assets/module-din-resistor.png', dinBody, dinPorts,
-    'Ten resistor terminals with one connector per terminal along the top and bottom. Connect cable conductors or I/O module ports to either row.', {
+    'Each connection point represents both holes at that end of a terminal. Name the top and bottom rows independently; connectors are numbered 1–10 from left to right.', {
       width: 640, height: 650, connectorRole: 'terminal',
-      header: Object.freeze({ x: 12, y: 235, width: 616, height: 18 }),
-      routingObstacles: Object.freeze([Object.freeze({ x: 12, y: 0, width: 616, height: 650 })]),
+      header: Object.freeze({ x: 12, y: -100, width: 616, height: 32 }),
+      routingObstacles: Object.freeze([
+        Object.freeze({ x: 12, y: 0, width: 616, height: 650 }),
+        Object.freeze({ x: 12, y: -100, width: 616, height: 32, avoidPortEscape: true }),
+      ]),
       imageAlt: 'Ten upright DIN resistor rail terminals, matching the approved flat-color artwork',
     }),
 });

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { FOUR_WIRE_ORDER_REVISION, boundsOf, compatiblePorts, geometry, normalizeProject } from '../dist/model.js';
+import { FOUR_WIRE_ORDER_REVISION, boundsOf, compatiblePorts, geometry, modulePortLabel, normalizeProject, terminalRowName } from '../dist/model.js';
+import { routeWires } from '../dist/router.js';
 
 const rail = (extra = {}) => ({ id: 'rail', kind: 'module', type: 'DIN_RESISTOR', name: 'DIN Resistor Rail Terminal Block', rio: 'Panel A', slot: '', x: 400, y: 100, ...extra });
 const io = (extra = {}) => ({ id: 'io', kind: 'module', type: 'AI', name: 'AI', rio: 'RIO A', slot: '5', x: 1200, y: 100, ...extra });
@@ -29,17 +30,99 @@ test('DIN bank exposes one ordered row of ten neutral terminals at each end', ()
   }
 });
 
-test('DIN geometry preserves top and bottom escape lanes and includes the inset header', () => {
+test('DIN title sits above the bank and has its own routing obstacle owner', () => {
   const n = rail(), t = MODULE_TYPES.DIN_RESISTOR;
   const { ports, obstacles } = geometry([n], MODULE_TYPES);
   assert.equal(Object.keys(ports).length, 20);
   assert.ok(Object.values(ports).every(p => p.connectorRole === 'terminal' && p.kind === 'module'));
   assert.equal(ports['rail:top-1'].y, n.y);
   assert.equal(ports['rail:bottom-10'].y, n.y + t.height);
-  assert.ok(obstacles.every(o => o.y >= n.y && o.y + o.height <= n.y + t.height), 'title does not obstruct outward top/bottom leads');
-  assert.ok(obstacles.some(o => o.x <= n.x + t.header.x && o.y <= n.y + t.header.y && o.x + o.width >= n.x + t.header.x + t.header.width && o.y + o.height >= n.y + t.header.y + t.header.height));
+  const body = obstacles.filter(o => o.nodeId === n.id);
+  assert.ok(body.length && body.every(o => o.y >= n.y && o.y + o.height <= n.y + t.height), 'port owner escape stops at the body boundary');
+  assert.ok(t.header.y + t.header.height < 0, 'title is above the top connector row');
+  const title = obstacles.find(o => o.x <= n.x + t.header.x && o.y <= n.y + t.header.y && o.x + o.width >= n.x + t.header.x + t.header.width && o.y + o.height >= n.y + t.header.y + t.header.height);
+  assert.ok(title, 'title is represented in routing geometry');
+  assert.notEqual(title.nodeId, n.id, 'outward stubs cannot cross the title under the owner exception');
+  assert.equal(title.nodeId, title.id);
   const b = boundsOf([n], MODULE_TYPES);
-  assert.ok(b.x < n.x && b.y < n.y && b.x + b.width > n.x + t.width && b.y + b.height > n.y + t.height);
+  assert.ok(b.x < n.x && b.y < n.y + t.header.y && b.x + b.width > n.x + t.width && b.y + b.height > n.y + t.height);
+});
+
+test('every top connector can route around the detached title instead of crossing it', () => {
+  const n = rail(), t = MODULE_TYPES.DIN_RESISTOR;
+  const title = { x: n.x + t.header.x, y: n.y + t.header.y, width: t.header.width, height: t.header.height };
+  for (const terminal of t.ports.filter(p => p.side === 'top')) {
+    // A real right-facing cable label above the title must detour around the
+    // title to reach each downward-facing row position independently.
+    const source = { ...device(), id: 'source', x: n.x + terminal.x - 210, y: title.y - 100 };
+    const geo = geometry([n, source], MODULE_TYPES);
+    const from = 'source:black', to = `${n.id}:${terminal.id}`;
+    const route = routeWires({ ...geo, wires: [wire('test-route', from, to)], grid: 10 }).routes['test-route'];
+    assert.notEqual(route.status, 'blocked', `${terminal.id} stays connectable with a title above it`);
+    assert.ok(route.points.length >= 2);
+    assert.deepEqual(route.points.at(-1), { x: geo.ports[to].x, y: geo.ports[to].y });
+    assert.equal(route.points.at(-2).x, geo.ports[to].x);
+    assert.ok(route.points.at(-2).y < geo.ports[to].y, 'wire approaches the top connector from above');
+    for (let i = 1; i < route.points.length; i++) {
+      const a = route.points[i - 1], b = route.points[i];
+      const crossesTitle = a.x === b.x
+        ? a.x > title.x && a.x < title.x + title.width && Math.min(a.y, b.y) < title.y + title.height && Math.max(a.y, b.y) > title.y
+        : a.y > title.y && a.y < title.y + title.height && Math.min(a.x, b.x) < title.x + title.width && Math.max(a.x, b.x) > title.x;
+      assert.equal(crossesTitle, false, `${terminal.id} does not cross its own title`);
+    }
+  }
+});
+
+test('each logical DIN connector points to both physical holes at its end', () => {
+  const type = MODULE_TYPES.DIN_RESISTOR;
+  const targets = [];
+  for (const port of type.ports) {
+    assert.equal(port.pinTargets.length, 2);
+    assert.deepEqual(port.pinTargets[0], { x: port.pinX, y: port.pinY }, 'outer hole remains the original target');
+    for (const target of port.pinTargets) {
+      assert.ok(target.x > type.body.x && target.x < type.body.x + type.body.w);
+      assert.ok(target.y > type.body.y && target.y < type.body.y + type.body.h);
+      assert.ok(port.side === 'top' ? target.y > port.y : target.y < port.y);
+      targets.push(`${target.x},${target.y}`);
+    }
+  }
+  assert.equal(type.ports.length, 20, 'one wire connection point remains per terminal end');
+  assert.equal(new Set(targets).size, 40, 'all forty distinct physical holes receive an arrow');
+});
+
+test('old DIN files and unnamed rows receive TB10/TB11 display names', () => {
+  const old = normalize(project([], [rail(), io()]));
+  const [terminal, regular] = old.nodes;
+  assert.equal(terminal.topRowName, 'TB10');
+  assert.equal(terminal.bottomRowName, 'TB11');
+  assert.equal('topRowName' in regular, false, 'ordinary I/O module data is unaffected');
+  assert.equal('bottomRowName' in regular, false);
+  const ports = geometry(old.nodes, MODULE_TYPES).ports;
+  assert.equal(ports['rail:top-1'].label, 'TB10.1');
+  assert.equal(ports['rail:top-10'].label, 'TB10.10');
+  assert.equal(ports['rail:bottom-1'].label, 'TB11.1');
+  assert.equal(ports['rail:bottom-10'].label, 'TB11.10');
+  assert.equal(ports['rail:top-1'].name, `${terminal.name} · TB10.1`);
+  assert.equal(modulePortLabel(regular, MODULE_TYPES.AI.ports[0]), MODULE_TYPES.AI.ports[0].label);
+  const empty = normalize(project([], [rail({ topRowName: '   ', bottomRowName: '' })]));
+  assert.equal(empty.nodes[0].topRowName, 'TB10');
+  assert.equal(empty.nodes[0].bottomRowName, 'TB11');
+});
+
+test('DIN row labels can be independently renamed and are trimmed and bounded', () => {
+  const original = rail(), changed = rail({ topRowName: '  SENSOR-TB  ' });
+  const before = geometry([original], MODULE_TYPES).ports;
+  const after = geometry([changed], MODULE_TYPES).ports;
+  assert.equal(terminalRowName(changed, 'top'), 'SENSOR-TB');
+  for (let i = 1; i <= 10; i++) {
+    assert.equal(after[`rail:top-${i}`].label, `SENSOR-TB.${i}`);
+    assert.equal(after[`rail:bottom-${i}`].label, before[`rail:bottom-${i}`].label);
+  }
+  const renamed = normalize(project([], [rail({ topRowName: ' A '.repeat(30), bottomRowName: '  FIELD-B  ' })]));
+  assert.ok(renamed.nodes[0].topRowName.length <= 24);
+  assert.equal(renamed.nodes[0].topRowName, renamed.nodes[0].topRowName.trim());
+  assert.equal(renamed.nodes[0].bottomRowName, 'FIELD-B');
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(renamed))), renamed);
 });
 
 test('DIN wiring accepts cable conductors and I/O ports but rejects incompatible endpoints', () => {
@@ -107,4 +190,16 @@ test('top/bottom saved manual anchors survive save/reopen and reversed cable imp
   const imported = normalize(project([wire('b', to.id, from.id, { manual: reversed, savedRoute: reversed })]));
   assert.deepEqual(imported.wires[0].manual, manual);
   assert.deepEqual(imported.wires[0].savedRoute, manual);
+  const edited = JSON.parse(JSON.stringify(first));
+  edited.nodes.find(n => n.id === 'rail').topRowName = 'TB20';
+  edited.nodes.find(n => n.id === 'rail').bottomRowName = 'TB21';
+  const renamed = normalize(edited);
+  assert.deepEqual(renamed.wires, first.wires, 'renaming rows preserves wire IDs, endpoints, colors, and saved/manual bends');
+  const before = geometry(first.nodes, MODULE_TYPES).ports, after = geometry(renamed.nodes, MODULE_TYPES).ports;
+  assert.deepEqual(Object.keys(after), Object.keys(before), 'display labels never become endpoint IDs');
+  for (const id of Object.keys(before)) {
+    assert.deepEqual([after[id].x, after[id].y, after[id].side], [before[id].x, before[id].y, before[id].side]);
+  }
+  assert.equal(after['rail:top-1'].label, 'TB20.1');
+  assert.equal(after['rail:bottom-1'].label, 'TB21.1');
 });

@@ -28,7 +28,7 @@ Run the existing checks with `npm test`. For hosting, serve the contents of `dis
 - `ASSET_NOTES.md`: artwork provenance and channel geometry.
 - `.openai/hosting.json`: configuration for the existing Wirebench Site.
 
-**DIN Resistor Rail Terminal Block** is available in the module library. It uses the approved flat image of ten upright terminals with exactly 20 connection points: **Top 1–10** and **Bottom 1–10**, numbered left to right. Either row can connect to cable conductors or another module. The two rows are neutral connector identifiers; they do not assign polarity or a resistor value. The earlier standalone single-terminal SVGs remain in `assets/din-resistor-terminal/`.
+**DIN Resistor Rail Terminal Block** is available in the module library. It uses the approved flat image of ten upright terminals with exactly 20 connection points: ten along the top and ten along the bottom, numbered left to right. Each point branches to the two circular wire holes at that end of its terminal. Select the block and edit **Top row name** and **Bottom row name** in Properties; labels use `name.number`, starting with **TB10.1–TB10.10** and **TB11.1–TB11.10**. Row names persist in saved projects and can change without disconnecting or rerouting wires. Either row can connect to cable conductors or another module. The two rows are neutral connector identifiers; they do not assign polarity or a resistor value. The earlier standalone single-terminal SVGs remain in `assets/din-resistor-terminal/`.
 
 Browser autosaves are stored on each browser and origin. This repository includes the default populated schedule; to transfer later personal edits between the hosted app and a local copy, use **Save project**, then **Open** the resulting `.wirebench.json` file.
 
@@ -74,7 +74,7 @@ The deterministic Manhattan router avoids component rectangles, reserved termina
 
 The app is a manual diagram editor. It preserves the channel labels in the supplied references and does not infer electrical compatibility or signal assignments from wire colors. A module channel accepts one conductor. DQ exposes the single shared 0 V connection area shown in the source image; it does not invent individual common terminal numbers or an unshown shared-ground bus.
 
-Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork; the DIN terminal bank uses the approved 2384 × 2055 transparent PNG. Bold red callout arrows point to the circular terminal coordinates. The DIN title sits in the space above the resistor carriers so the top and bottom wire paths remain clear. All artwork is embedded into exported PNGs.
+Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork; the DIN terminal bank uses the approved 2384 × 2055 transparent PNG. Bold red callout arrows point to the circular terminal coordinates. The DIN title sits above the entire block and its connector labels, with routing space below the title. New wire paths avoid the title bar. All artwork is embedded into exported PNGs.
 
 ## Source
 

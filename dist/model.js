@@ -77,6 +77,19 @@ export function applyFourWireOrder(project) {
 export const snap = (value, grid = 10) => Math.round(value / grid) * grid;
 export const makeId = (prefix = 'n') => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+/** Row names are display metadata; connector IDs and wire anchors never change. */
+export function terminalRowName(node, side) {
+  const bottom = side === 'bottom';
+  const value = String(node?.[bottom ? 'bottomRowName' : 'topRowName'] ?? '').trim().slice(0, 24).trim();
+  return value || (bottom ? 'TB11' : 'TB10');
+}
+
+export function modulePortLabel(node, port) {
+  return node?.type === 'DIN_RESISTOR' && ['top', 'bottom'].includes(port.side)
+    ? `${terminalRowName(node, port.side)}.${port.channel + 1}`
+    : port.label;
+}
+
 /** A terminal block can join cables to I/O hardware without enabling I/O-to-I/O wiring. */
 export function compatiblePorts(a, b) {
   if (!a || !b || a.id === b.id || (a.nodeId && a.nodeId === b.nodeId)) return false;
@@ -92,12 +105,15 @@ export function geometry(nodes, types) {
       const type = types[node.type];
       if (!type) continue;
       if (type.routingObstacles) {
-        // Explicit rectangles cover the bank, callouts, and its inset header;
-        // they do not assume that connection points face left or right.
-        type.routingObstacles.forEach((r, index) => obstacles.push({
-          id: index ? `${node.id}-obstacle-${index}` : node.id, nodeId: node.id,
-          x: node.x + r.x, y: node.y + r.y, width: r.width, height: r.height,
-        }));
+        // A detached title is an ordinary routing obstruction, not part of the
+        // port owner's escape exception. Wires must route around that title.
+        type.routingObstacles.forEach((r, index) => {
+          const id = index || r.avoidPortEscape ? `${node.id}-obstacle-${index}` : node.id;
+          obstacles.push({
+            id, nodeId: r.avoidPortEscape ? id : node.id,
+            x: node.x + r.x, y: node.y + r.y, width: r.width, height: r.height,
+          });
+        });
       } else {
         const leftEdge = Math.min(...type.ports.map(port => port.x));
         const rightEdge = Math.max(...type.ports.map(port => port.x));
@@ -109,7 +125,8 @@ export function geometry(nodes, types) {
       }
       for (const port of type.ports) {
         const id = `${node.id}:${port.id}`;
-        ports[id] = { ...port, id, localId: port.id, nodeId: node.id, kind: 'module', ...(type.connectorRole ? { connectorRole: type.connectorRole } : {}), x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${port.label}` };
+        const label = modulePortLabel(node, port);
+        ports[id] = { ...port, id, label, localId: port.id, nodeId: node.id, kind: 'module', ...(type.connectorRole ? { connectorRole: type.connectorRole } : {}), x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${label}` };
       }
     } else if (node.kind === 'device') {
       const conductors = CONDUCTORS[node.wireCount] || CONDUCTORS[2];
@@ -142,7 +159,8 @@ export function normalizeProject(input, types) {
     if (n.kind === 'module') {
       if (!types[raw.type]) throw new Error(`Unknown module type: ${str(raw.type, 24)}`);
       const scheduleId = typeof raw.scheduleId === 'string' && /^[a-zA-Z0-9_-]{1,90}$/.test(raw.scheduleId) ? { scheduleId: raw.scheduleId } : {};
-      return { ...n, type: raw.type, slot: str(raw.slot, 40), rio: str(raw.rio, 40), ...scheduleId };
+      const rowNames = raw.type === 'DIN_RESISTOR' ? { topRowName: terminalRowName(raw, 'top'), bottomRowName: terminalRowName(raw, 'bottom') } : {};
+      return { ...n, type: raw.type, slot: str(raw.slot, 40), rio: str(raw.rio, 40), ...scheduleId, ...rowNames };
     }
     const wireCount = Number(raw.wireCount) === 4 ? 4 : 2;
     const colors = {};

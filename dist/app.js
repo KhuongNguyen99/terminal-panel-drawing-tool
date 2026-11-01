@@ -3,7 +3,7 @@ import { routeWithPreferences } from './independent-routing.js';
 import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from './schedule.js';
 import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigation.js';
 import { captureManualRoute, moveWireSegment } from './manual-routing.js';
-import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, normalizeProject, boundsOf } from './model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), stage = $('#stage');
@@ -22,7 +22,7 @@ function newDevice(wireCount = 2, extra = {}) {
   return { id: makeId('dev'), kind: 'device', name: 'New device', cable: '', wireCount, x: 40, y: 250, cableSide: 'left', wireSide: 'right', colors: {}, ...extra };
 }
 function newModule(type = 'AI', extra = {}) {
-  return { id: makeId('mod'), kind: 'module', type, name: MODULE_TYPES[type]?.label || type, rio: 'RIO A', slot: '', x: 430, y: 90, ...extra };
+  return { id: makeId('mod'), kind: 'module', type, name: MODULE_TYPES[type]?.label || type, rio: 'RIO A', slot: '', x: 430, y: 90, ...(type === 'DIN_RESISTOR' ? { topRowName: 'TB10', bottomRowName: 'TB11' } : {}), ...extra };
 }
 function exampleProject(full = false) {
   const m = newModule('AI', { id: 'module-slot5', name: 'Analog input', slot: '5', x: 440, y: 80 });
@@ -174,6 +174,16 @@ function portMarkup(p, localX, localY, exporting = false) {
 const portLabelMeasure = document.createElement('canvas').getContext('2d');
 portLabelMeasure.font = '14px Arial';
 
+function calloutArrow(points) {
+  const target = points.at(-1), previous = points.at(-2);
+  const dx = target.x - previous.x, dy = target.y - previous.y, length = Math.hypot(dx, dy);
+  if (!length) return '';
+  const ux = dx / length, uy = dy / length;
+  const baseX = target.x - ux * 10, baseY = target.y - uy * 10;
+  const shaft = points.slice(0, -1).map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' ') + ` L${baseX} ${baseY}`;
+  return `<path class="port-arrow" d="${shaft}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><path class="port-arrowhead" d="M${target.x} ${target.y} L${baseX - uy * 5} ${baseY + ux * 5} L${baseX + uy * 5} ${baseY - ux * 5} Z" fill="#dc2626"/>`;
+}
+
 function moduleMarkup(n, exporting = false, embedded = {}) {
   const t = MODULE_TYPES[n.type], b = t.body;
   const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
@@ -188,12 +198,20 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
   for (const p of t.ports) {
     if (p.side === 'top' || p.side === 'bottom') {
       const top = p.side === 'top';
-      const targetX = p.pinX ?? p.x, targetY = p.pinY ?? p.y;
+      const targets = p.pinTargets || [{ x: p.pinX ?? p.x, y: p.pinY ?? p.y }];
       const startX = p.x, startY = p.y + (top ? 34 : -34);
-      const dx = targetX - startX, dy = targetY - startY, length = Math.hypot(dx, dy);
-      const ux = dx / length, uy = dy / length;
-      const baseX = targetX - ux * 10, baseY = targetY - uy * 10;
-      out += `<text class="port-label" x="${p.x}" y="${p.y + (top ? 22 : -14)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#263947">${esc(p.label)}</text><path class="port-arrow" d="M${startX} ${startY} L${baseX} ${baseY}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/><path class="port-arrowhead" d="M${targetX} ${targetY} L${baseX - uy * 5} ${baseY + ux * 5} L${baseX + uy * 5} ${baseY - ux * 5} Z" fill="#dc2626"/>`;
+      const label = modulePortLabel(n, p);
+      const labelFit = portLabelMeasure.measureText(label).width * 12 / 14 > 54 ? ' textLength="54" lengthAdjust="spacingAndGlyphs"' : '';
+      out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}"`}><title>${esc(label)}${targets.length > 1 ? ' · both holes' : ''}</title><text class="port-label" x="${p.x}" y="${p.y + (top ? 22 : -14)}" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#263947"${labelFit}>${esc(label)}</text>`;
+      if (targets.length > 1) {
+        const fork = { x: targets[0].x, y: p.y + (top ? 48 : -48) };
+        const laneX = p.x + 25;
+        out += `<path class="port-arrow" d="M${startX} ${startY} L${fork.x} ${fork.y}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>`;
+        out += calloutArrow([fork, targets[0]]);
+        for (const target of targets.slice(1)) out += calloutArrow([fork, { x: laneX, y: fork.y }, { x: laneX, y: target.y }, target]);
+        out += `<circle class="port-branch" cx="${fork.x}" cy="${fork.y}" r="2.6" fill="#dc2626"/>`;
+      } else out += calloutArrow([{ x: startX, y: startY }, targets[0]]);
+      out += '</g>';
       out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
       continue;
     }
@@ -505,7 +523,8 @@ function moduleChannelsMarkup(n) {
   if (t.connectorRole === 'terminal') {
     return `<section class="channel-schedule"><h3>Connector status</h3>${channels.map(channel => {
       const state = side => occupied(`${n.id}:${side}-${channel + 1}`) ? 'Connected' : 'Free';
-      return `<div class="channel-row"><span class="channel-number">${channel + 1}</span><span><strong>Terminal ${channel + 1}</strong><small>Top: ${state('top')} · Bottom: ${state('bottom')}</small></span></div>`;
+      const label = side => esc(modulePortLabel(n, t.ports.find(port => port.side === side && port.channel === channel)));
+      return `<div class="channel-row"><span class="channel-number">${channel + 1}</span><span><strong>${label('top')} · ${label('bottom')}</strong><small>Top: ${state('top')} · Bottom: ${state('bottom')}</small></span></div>`;
     }).join('')}</section>`;
   }
   return `<section class="channel-schedule"><h3>Channel assignments</h3>${channels.map(channel => {
@@ -541,7 +560,8 @@ function renderInspector() {
   }
   if (n?.kind === 'module') {
     const t = MODULE_TYPES[n.type];
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> labeled connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
+    const rowNames = t.connectorRole === 'terminal' ? `<section class="terminal-row-names"><h3>Connector row names</h3>${field('Top row name', textInput('topRowName', terminalRowName(n, 'top'), 'maxlength="24" placeholder="e.g. TB10"'))}${field('Bottom row name', textInput('bottomRowName', terminalRowName(n, 'bottom'), 'maxlength="24" placeholder="e.g. TB11"'))}<p class="source-note">Each row uses its name followed by .1 through .10. One connection point represents both holes.</p></section>` : '';
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> labeled connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
   }
   if (selected.size > 1) {
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;
@@ -784,6 +804,13 @@ function setNodeProperty(prop, value, element = null) {
   }
   if (prop === 'wireCount') value = Number(value) === 4 ? 4 : 2;
   if (['name', 'cable', 'slot', 'rio'].includes(prop)) value = String(value).slice(0, prop === 'name' ? 100 : 40);
+  if (['topRowName', 'bottomRowName'].includes(prop)) {
+    if (n.kind !== 'module' || n.type !== 'DIN_RESISTOR') return;
+    value = terminalRowName({ ...n, [prop]: value }, prop === 'topRowName' ? 'top' : 'bottom');
+    if (element) element.value = value;
+    change(() => { n[prop] = value; }, undefined, false);
+    return;
+  }
   change(() => { n[prop] = value; if (prop === 'wireCount') { if (Object.hasOwn(n, 'height')) n.height = deviceHeight(n); const allowed = new Set(CONDUCTORS[value].map(c => c.key)); project.wires = project.wires.filter(w => !w.from.startsWith(n.id + ':') || allowed.has(w.from.split(':')[1])); } });
 }
 
@@ -842,11 +869,15 @@ document.addEventListener('input', event => {
     n[prop] = prop === 'width' ? deviceWidth({ ...n, width: value }) : deviceHeight({ ...n, height: value });
     renderBoard(true); saveLocal(); return;
   }
-  if (['name', 'cable', 'rio', 'slot'].includes(prop) || el.id === 'project-title') {
+  if (['name', 'cable', 'rio', 'slot', 'topRowName', 'bottomRowName'].includes(prop) || el.id === 'project-title') {
     if (!textEdit || textEdit.element !== el) textEdit = { element: el, before: clone(project) };
     if (el.id === 'project-title') project.title = el.value.slice(0, 90) || 'Untitled wiring';
-    else { const n = selectedNode(); if (!n) return; n[prop] = el.value.slice(0, prop === 'name' ? 100 : 40); }
+    else { const n = selectedNode(); if (!n) return; n[prop] = el.value.slice(0, prop === 'name' ? 100 : ['topRowName', 'bottomRowName'].includes(prop) ? 24 : 40); }
     renderBoard(false); renderNavigation(); renderDeviceList(); saveLocal();
+    if (['topRowName', 'bottomRowName'].includes(prop)) {
+      const list = $('#inspector-content .channel-schedule'), n = selectedNode();
+      if (list && n?.type === 'DIN_RESISTOR') list.outerHTML = moduleChannelsMarkup(n);
+    }
   }
 });
 document.addEventListener('focusout', event => {

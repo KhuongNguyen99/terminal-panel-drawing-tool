@@ -75,3 +75,77 @@ test('focused exports include directly connected DIN and I/O modules without exp
   assert.deepEqual(focusNodesForModule('module-a', project).map(n => n.id), ['module-a', 'assigned', 'wired', 'both', 'din']);
   assert.deepEqual(focusNodesForModule('din', project).map(n => n.id), ['din', 'module-a', 'module-b']);
 });
+
+const taggedFixture = () => {
+  const project = fixture();
+  project.nodes.unshift({ id: 'assigned-tag', kind: 'tag', name: 'PRESSURE', wireSide: 'right' });
+  project.nodes.push(
+    { id: 'module-tag', kind: 'tag', name: 'Pressure', wireSide: 'bottom' },
+    { id: 'wired-tag', kind: 'tag', name: 'Flow', wireSide: 'left' },
+    { id: 'remote-tag', kind: 'tag', name: ' pressure ', wireSide: 'top' },
+    { id: 'unwired-tag', kind: 'tag', name: 'PRESSURE', wireSide: 'right' },
+    { id: 'unassigned-tag', kind: 'tag', name: 'pressure', wireSide: 'left' },
+  );
+  project.wires.push(
+    { from: 'assigned:black', to: 'assigned-tag:connector' },
+    { from: 'module-tag:connector', to: 'module-a:ch3-plus' },
+    { from: 'wired-tag:connector', to: 'wired:red' },
+    { from: 'module-b:ch2-plus', to: 'remote-tag:connector' },
+    { from: 'unassigned:white', to: 'unassigned-tag:connector' },
+  );
+  return project;
+};
+
+test('slot focus retains tags on assigned and physically wired devices in project order', () => {
+  const project = taggedFixture();
+  const focused = focusNodesForModule('module-a', project);
+  assert.deepEqual(focused.map(n => n.id), ['module-a', 'assigned-tag', 'assigned', 'wired', 'both', 'module-tag', 'wired-tag']);
+  const ids = new Set(focused.map(n => n.id));
+  const exportedWires = project.wires.filter(w => ids.has(w.from.split(':')[0]) && ids.has(w.to.split(':')[0]));
+  assert.ok(exportedWires.some(w => w.to === 'assigned-tag:connector'), 'an unwired but assigned device keeps its short tag wire');
+  assert.ok(exportedWires.some(w => w.from === 'wired-tag:connector'), 'a physical device connection keeps its tag wire in either direction');
+  assert.ok(exportedWires.some(w => w.from === 'module-tag:connector'), 'a tag directly on the selected module stays in the export');
+});
+
+test('matching remote tag names do not expand local module focus or scoped exports', () => {
+  const project = taggedFixture();
+  const focused = focusNodesForModule('module-a', project);
+  for (const id of ['module-b', 'other', 'remote-tag', 'unwired-tag', 'unassigned', 'unassigned-tag']) {
+    assert.equal(focused.some(n => n.id === id), false, `${id} stays outside the local module scope`);
+  }
+  assert.deepEqual(focusNodesForModule('module-b', project).map(n => n.id), ['module-b', 'other', 'remote-tag']);
+  const before = focused.map(n => n.id);
+  for (const node of project.nodes) if (node.kind === 'tag') node.name = 'SAME NAME';
+  assert.deepEqual(focusNodesForModule('module-a', project).map(n => n.id), before, 'group names never determine export membership');
+});
+
+test('tag navigation resolves only a directly wired module or its local device assignment', () => {
+  const project = taggedFixture(), byId = id => project.nodes.find(n => n.id === id);
+  assert.equal(scheduleModuleIdForNode(byId('module-tag'), project), 'module-a');
+  assert.equal(scheduleModuleIdForNode(byId('assigned-tag'), project), 'module-a');
+  assert.equal(scheduleModuleIdForNode(byId('wired-tag'), project), 'module-a');
+  assert.equal(scheduleModuleIdForNode(byId('remote-tag'), project), 'module-b');
+  assert.equal(scheduleModuleIdForNode(byId('unwired-tag'), project), null);
+  assert.equal(scheduleModuleIdForNode(byId('unassigned-tag'), project), null);
+  assert.equal(scheduleModuleIdForNode(byId('unassigned'), project), null, 'tags do not change existing device navigation');
+  byId('assigned').assignment.moduleId = 'removed-module';
+  project.wires.push({ from: 'assigned:white', to: 'module-b:ch3-plus' });
+  assert.equal(scheduleModuleIdForNode(byId('assigned-tag'), project), 'module-b', 'a tag follows its device’s valid physical fallback');
+  project.wires.push({ from: 'wired:green', to: 'module-b:ch3-minus' });
+  assert.equal(scheduleModuleIdForNode(byId('wired-tag'), project), null, 'ambiguous local device wiring does not invent a slot');
+});
+
+test('tags and tagged focus remain read-only and do not traverse tag-to-tag chains', () => {
+  const project = taggedFixture();
+  project.wires.push({ from: 'module-tag:connector', to: 'unwired-tag:connector' });
+  const before = structuredClone(project);
+  for (const node of project.nodes) { if (node.assignment) Object.freeze(node.assignment); Object.freeze(node); }
+  for (const wire of project.wires) Object.freeze(wire);
+  Object.freeze(project.nodes); Object.freeze(project.wires); Object.freeze(project);
+  assert.equal(scheduleModuleIdForNode(project.nodes.find(n => n.id === 'unwired-tag'), project), null);
+  const focused = focusNodesForModule('module-a', project);
+  assert.equal(focused.some(n => n.id === 'unwired-tag'), false);
+  for (const node of focused) assert.equal(node, project.nodes.find(n => n.id === node.id));
+  for (const node of project.nodes) scheduleModuleIdForNode(node, project);
+  assert.deepEqual(project, before);
+});

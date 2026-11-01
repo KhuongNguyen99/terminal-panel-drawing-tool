@@ -26,6 +26,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-module" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="1.5"/><path d="M10 5h4M10 8h4M10 12h1m2 0h1m-4 3h1m2 0h1m-4 3h1m2 0h1M5 6H3m2 5H3m2 6H3m16-11h2m-2 5h2m-2 6h2"/></symbol>
     <symbol id="i-device" viewBox="0 0 24 24"><rect x="3" y="6" width="15" height="12" rx="2"/><path d="M7 10h7M7 14h4m7-5h3m-3 6h3"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 7h13l5 5-5 5H3V7Z"/><circle cx="7" cy="12" r="1.5"/><path d="M11 12h5"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
   </svg>
 
@@ -64,7 +65,7 @@
             <button class="module-card" data-add-module="AI_RTD"><span class="module-thumb rtd"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AI RTD</strong><small>Temperature · 4 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
             <button class="module-card" data-add-module="AQ"><span class="module-thumb aq"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>AQ</strong><small>Analog output · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
             <button class="module-card" data-add-module="EX_AI"><span class="module-thumb ex"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>Ex-AI</strong><small>Analog input · 2 channels</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
-            <button class="module-card terminal-module-card" data-add-module="DIN_RESISTOR"><span class="module-thumb din"><img src="assets/module-din-resistor.png" alt="" /></span><span class="module-card-copy"><strong>DIN Resistor Rail Terminal Block</strong><small>10 top + 10 bottom connectors</small></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
+            <button class="module-card terminal-module-card" data-add-module="DIN_RESISTOR"><span class="module-thumb din"><svg class="icon"><use href="#i-module"/></svg></span><span class="module-card-copy"><strong>DIN Resistor Rail Terminal Block</strong></span><svg class="icon add-icon"><use href="#i-plus"/></svg></button>
           </div>
         </section>
         <section class="library-section devices-section">
@@ -74,6 +75,11 @@
             <button class="device-add-button" data-action="add-4wire"><span class="wire-swatches"><i class="swatch-red"></i><i class="swatch-black"></i><i class="swatch-white"></i><i class="swatch-green"></i></span><strong>4-wire</strong><svg class="icon"><use href="#i-plus"/></svg></button>
           </div>
           <div id="device-list" class="device-list" aria-label="Devices on canvas"></div>
+        </section>
+        <section class="library-section tags-section">
+          <div class="section-heading"><h2>Connector tags</h2><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg></div>
+          <button class="connector-tag-button" data-action="add-tag" aria-label="Connector tag"><span class="tag-thumb" aria-hidden="true"><svg class="icon"><use href="#i-tag"/></svg></span><span><strong>Connector tag</strong><small>Link matching names</small></span><svg class="icon add-icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          <div id="tag-list" class="tag-list" aria-label="Connector tags on canvas"></div>
         </section>
         <div class="library-footer">
           <div class="tiny-diagram" aria-hidden="true"><span></span><i></i><b></b></div>
@@ -143,6 +149,7 @@
   <dialog id="help-dialog" class="modal help-modal">
     <div class="modal-heading"><div><span class="eyebrow">A QUICK TOUR</span><h2>Your wiring workspace</h2></div><button class="icon-button" data-action="close-help" aria-label="Close editor guide"><svg class="icon"><use href="#i-close"/></svg></button></div>
     <div class="help-steps"><div><span>01</span><section><h3>Place your components</h3><p>Add a module or a 2-wire / 4-wire cable label. Drag it anywhere on the grid. Use Properties to edit names, cable numbers, label side, width, and height.</p></section></div><div><span>02</span><section><h3>Make your connections</h3><p>Click a conductor dot on a cable label, then a channel port on a module. You can also drag between ports. A new wire gets an initial path, then stays in place. Moving a component keeps its wires attached.</p></section></div><div><span>03</span><section><h3>Adjust one wire at a time</h3><p>Select a wire, then drag any segment or square handle. Other wire paths stay fixed. Auto-route is off by default. Use Auto-route this wire for one connection, or Auto-route all to replace every path. Turn on Auto-route for live routing while arranging components. Undo restores previous paths.</p></section></div><div><span>04</span><section><h3>Save and share</h3><p>Save project downloads an editable JSON file, including your wire paths and routing preference. Open restores it. Export PNG keeps the same layout with an optional transparent background.</p></section></div></div>
+    <p class="instruction-card"><strong>Connector tags:</strong> Tags with the same name represent a virtual connection. Wire each tag where you need it, then select a tag and choose a matching tag in Properties to jump to its location.</p>
     <div class="shortcut-grid"><span>Undo<kbd>Ctrl / ⌘ Z</kbd></span><span>Redo<kbd>Ctrl / ⌘ Shift Z</kbd></span><span>Delete selection<kbd>Delete</kbd></span><span>Pan<kbd>Space + drag</kbd></span><span>Zoom<kbd>Mouse wheel</kbd></span><span>Cancel connection<kbd>Esc</kbd></span></div>
     <div class="modal-actions"><button class="button primary" data-action="close-help">Got it</button></div>
   </dialog>

@@ -3,7 +3,8 @@ import { routeWithPreferences } from './independent-routing.js';
 import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from './schedule.js';
 import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigation.js';
 import { captureManualRoute, moveWireSegment } from './manual-routing.js';
-import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
+import { findConnectorTagPosition, replaceWireWithTags } from './connector-tag-actions.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, TAG_WIDTH, TAG_HEIGHT, tagName, tagNameKey, matchingTags, nextTagName, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), stage = $('#stage');
@@ -23,6 +24,13 @@ function newDevice(wireCount = 2, extra = {}) {
 }
 function newModule(type = 'AI', extra = {}) {
   return { id: makeId('mod'), kind: 'module', type, name: MODULE_TYPES[type]?.label || type, rio: 'RIO A', slot: '', x: 430, y: 90, ...(type === 'DIN_RESISTOR' ? { topRowName: 'TB10', bottomRowName: 'TB11' } : {}), ...extra };
+}
+function newTag(name = nextTagName(project.nodes), extra = {}) {
+  return { id: makeId('tag'), kind: 'tag', name: tagName(name), wireSide: 'right', x: 0, y: 0, ...extra };
+}
+function nodeSize(node) {
+  if (node.kind === 'module') return { width: MODULE_TYPES[node.type].width, height: MODULE_TYPES[node.type].height };
+  return node.kind === 'tag' ? { width: TAG_WIDTH, height: TAG_HEIGHT } : { width: deviceWidth(node), height: deviceHeight(node) };
 }
 function exampleProject(full = false) {
   const m = newModule('AI', { id: 'module-slot5', name: 'Analog input', slot: '5', x: 440, y: 80 });
@@ -92,6 +100,33 @@ function moduleCaption(n, includeType = false) {
 }
 function selectedNode() { return selected.size === 1 ? nodeById([...selected][0]) : null; }
 function occupied(id, ignoreWire) { return project.wires.find(w => w.id !== ignoreWire && (w.from === id || w.to === id)); }
+function tagConnection(tag) {
+  const id = `${tag.id}:connector`, wire = occupied(id);
+  const port = wire && geo.ports[wire.from === id ? wire.to : wire.from];
+  return port ? { wire, port, node: nodeById(port.nodeId) } : null;
+}
+function tagLocation(tag) {
+  const connection = tagConnection(tag);
+  if (!connection) return `Not wired · X ${Math.round(tag.x)}, Y ${Math.round(tag.y)}`;
+  const { node, port } = connection;
+  return node?.kind === 'module' ? `${moduleCaption(node)} · ${port.label || port.localId}` : port.name;
+}
+function tagNumber(tag) { return project.nodes.filter(n => n.kind === 'tag').findIndex(n => n.id === tag.id) + 1; }
+function jumpToNode(id) {
+  const n = nodeById(id); if (!n) return;
+  commitTextEdit(); clearSelection(); selected.add(n.id);
+  focusedModuleId = scheduleModuleIdForNode(n, project) || '';
+  render(false);
+  if (n.kind === 'tag') view.zoom = Math.max(.9, Math.min(1.3, view.zoom));
+  const size = nodeSize(n);
+  view.x = n.x + size.width / 2 - stage.clientWidth / view.zoom / 2;
+  view.y = n.y + size.height / 2 - stage.clientHeight / view.zoom / 2;
+  syncView();
+  if (n.kind === 'tag') {
+    canvas.querySelector(`[data-node="${CSS.escape(n.id)}"]`)?.focus({ preventScroll: true });
+    $('#status-message').textContent = `Viewing ${n.name || 'Unnamed tag'} · ${tagLocation(n)}`;
+  }
+}
 function world(event) { const r = canvas.getBoundingClientRect(); return { x: view.x + (event.clientX - r.left) / view.zoom, y: view.y + (event.clientY - r.top) / view.zoom }; }
 function snapped(value) { return project.settings.snap ? snap(value, project.settings.grid) : Math.round(value); }
 function viewportCenter() { return { x: view.x + stage.clientWidth / (2 * view.zoom), y: view.y + stage.clientHeight / (2 * view.zoom) }; }
@@ -232,6 +267,27 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
     out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
   }
   out += '</g>'; return out;
+}
+function tagMarkup(n, exporting = false) {
+  const side = n.wireSide || 'right', linked = matchingTags(project.nodes, n).length;
+  const picked = selectedNode(), isSelected = !exporting && selected.has(n.id);
+  const isPeer = !exporting && picked?.kind === 'tag' && picked.id !== n.id && tagNameKey(n.name) && tagNameKey(picked.name) === tagNameKey(n.name);
+  const shape = side === 'left' ? 'M0 20 L14 0 H160 V40 H14 Z' : side === 'right' ? 'M0 0 H146 L160 20 L146 40 H0 Z' : side === 'top' ? 'M0 10 H70 L80 0 L90 10 H160 V40 H0 Z' : 'M0 0 H160 V30 H90 L80 40 L70 30 H0 Z';
+  const cx = side === 'left' ? 85 : side === 'right' ? 75 : 80;
+  const nameY = exporting ? (side === 'top' ? 29 : side === 'bottom' ? 20 : 25) : side === 'top' ? 24 : side === 'bottom' ? 14 : 17;
+  const name = tagName(n.name) || 'Unnamed tag';
+  const fit = portLabelMeasure.measureText(name).width * 13 / 14 > 126 ? ' textLength="126" lengthAdjust="spacingAndGlyphs"' : '';
+  const caption = !tagNameKey(n.name) ? 'Enter a tag name' : linked ? `${linked} linked tag${linked === 1 ? '' : 's'}` : 'No matching tag';
+  let out = `<g class="connector-tag-node ${isSelected ? 'is-selected' : ''} ${isPeer ? 'is-linked' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-tag-node="true" role="button" aria-label="Connector tag ${esc(name)} · ${tagNumber(n)}" tabindex="0"`} transform="translate(${n.x} ${n.y})">`;
+  if (!exporting && (isSelected || isPeer)) out += `<rect x="-7" y="-7" width="${TAG_WIDTH + 14}" height="${TAG_HEIGHT + 14}" rx="9" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="${isSelected ? '5 3' : '2 4'}" opacity="${isSelected ? 1 : .6}" pointer-events="none"/>`;
+  out += `<title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-size="13" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text>`;
+  if (!exporting) out += `<text x="${cx}" y="${nameY + 12}" text-anchor="middle" font-size="8" fill="#728c83" pointer-events="none">${esc(caption)}</text>`;
+  const p = geo.ports[`${n.id}:connector`];
+  if (p) out += portMarkup(p, p.x - n.x, p.y - n.y, exporting);
+  out += '</g>'; return out;
+}
+function nodeMarkup(n, exporting = false, embedded = {}) {
+  return n.kind === 'module' ? moduleMarkup(n, exporting, embedded) : n.kind === 'tag' ? tagMarkup(n, exporting) : deviceMarkup(n, exporting);
 }
 const deviceTextMeasure = document.createElement('canvas').getContext('2d');
 function deviceNameLayout(name, width, height) {
@@ -438,9 +494,10 @@ function renderBoard(reroute = false) {
   if (reroute) computeRoutes(typeof reroute === 'object' ? reroute : {}); else geo = geometry(project.nodes, MODULE_TYPES);
   const wires = selectedWire ? [...project.wires.filter(w => w.id !== selectedWire), ...project.wires.filter(w => w.id === selectedWire)] : project.wires;
   $('#wires-layer').innerHTML = wires.map(w => wireMarkup(w)).join('');
-  $('#nodes-layer').innerHTML = project.nodes.map(n => n.kind === 'module' ? moduleMarkup(n) : deviceMarkup(n)).join('');
+  $('#nodes-layer').innerHTML = project.nodes.map(n => nodeMarkup(n)).join('');
   renderOverlay();
-  $('#board-count').textContent = `${project.nodes.filter(n => n.kind === 'module').length} modules · ${project.nodes.filter(n => n.kind === 'device').length} devices · ${project.wires.length} wires`;
+  const tagCount = project.nodes.filter(n => n.kind === 'tag').length;
+  $('#board-count').textContent = `${project.nodes.filter(n => n.kind === 'module').length} modules · ${project.nodes.filter(n => n.kind === 'device').length} devices${tagCount ? ` · ${tagCount} tags` : ''} · ${project.wires.length} wires`;
   $('#canvas-hint').hidden = project.nodes.length > 0;
   const blocked = routing.diagnostics?.blocked || 0;
   if (blocked) $('#status-message').textContent = `${blocked} wire${blocked > 1 ? 's need' : ' needs'} more room. Move the obstruction or adjust the affected wire.`;
@@ -506,6 +563,18 @@ function renderDeviceList() {
   if (picked?.kind === 'device' && !scope.includes(picked)) scope.push(picked);
   const devices = scope.filter(n => n.kind === 'device');
   list.innerHTML = devices.length ? devices.map(n => `<button class="device-list-item ${selected.has(n.id) ? 'active' : ''}" data-select-node="${esc(n.id)}"><span class="list-cable">${esc(n.cable || '—')}</span><span><strong>${esc(n.name || 'Unnamed device')}</strong><small>${n.wireCount} wires · ${project.wires.filter(w => w.from.startsWith(n.id + ':')).length} connected</small></span></button>`).join('') : '<p class="muted-empty">Add a device, then connect its conductor dots to module ports.</p>';
+  renderTagList();
+}
+function renderTagList() {
+  const list = $('#tag-list'); if (!list) return;
+  const tags = project.nodes.filter(n => n.kind === 'tag');
+  list.innerHTML = tags.length ? tags.map(n => `<button class="tag-list-item ${selected.has(n.id) ? 'active' : ''}" data-jump-tag="${esc(n.id)}" aria-label="Go to ${esc(n.name || 'Unnamed tag')} · tag ${tagNumber(n)}" aria-pressed="${selected.has(n.id)}"><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg><span><strong>${esc(n.name || 'Unnamed tag')}</strong><small class="tag-peer-meta">${esc(tagLocation(n))}</small></span></button>`).join('') : '<p class="tag-empty-note">Use matching names to connect distant points.</p>';
+}
+function tagConnectionsMarkup(n) {
+  const peers = matchingTags(project.nodes, n), local = tagConnection(n);
+  const current = local ? `<button class="tag-peer" data-select-node="${esc(local.node.id)}"><strong>Connected to</strong><span class="tag-peer-meta">${esc(tagLocation(n))}</span></button>` : '<p class="tag-empty-note">Connect this tag’s dot to a module terminal or cable conductor.</p>';
+  const list = peers.length ? peers.map(peer => `<button class="tag-peer" data-jump-tag="${esc(peer.id)}" aria-label="Go to ${esc(peer.name || 'Unnamed tag')} · tag ${tagNumber(peer)}"><strong>${esc(peer.name)} <small>· Tag ${tagNumber(peer)}</small></strong><span class="tag-peer-meta">${esc(tagLocation(peer))}</span><span class="tag-peer-meta">Go to connector →</span></button>`).join('') : `<p class="tag-empty-note">${tagNameKey(n.name) ? 'No other tag has this name. Add a matching tag near the other end of the connection.' : 'Enter a name to link this tag to other connectors.'}</p>`;
+  return `<section class="tag-connections"><h3>Local connection</h3>${current}</section><section class="tag-connections"><h3>Matching tags <span>(${peers.length})</span></h3>${list}</section>`;
 }
 function field(label, content, note = '') { return `<label class="field"><span>${label}</span>${content}${note ? `<small>${note}</small>` : ''}</label>`; }
 function textInput(prop, value, extra = '') { return `<input data-prop="${prop}" value="${esc(value)}" ${extra}>`; }
@@ -533,7 +602,7 @@ function moduleChannelsMarkup(n) {
     const wire = project.wires.find(w => [w.from, w.to].some(id => id.startsWith(n.id + ':') && geo.ports[id]?.channel === channel));
     const opposite = wire && (wire.from.startsWith(n.id + ':') ? wire.to : wire.from);
     const device = assigned || (opposite && nodeById(opposite.split(':')[0]));
-    const detail = device?.kind === 'module' ? 'Connected module' : `Cable ${esc(device?.cable || '—')}`;
+    const detail = device?.kind === 'module' ? 'Connected module' : device?.kind === 'tag' ? `Connector tag · ${matchingTags(project.nodes, device).length} matching` : `Cable ${esc(device?.cable || '—')}`;
     const label = `<span class="channel-number">CH${channel}</span><span><strong>${esc(device?.name || 'Spare')}</strong>${device ? `<small>${detail}</small>` : '<small>No device assigned</small>'}${original ? `<code>${esc(original.tag)}</code>` : ''}</span>`;
     return device ? `<button class="channel-row" data-select-node="${esc(device.id)}">${label}</button>` : `<div class="channel-row is-spare">${label}</div>`;
   }).join('')}${source?.typeInferred ? `<p class="source-note">The sheet labels this module AI. The ${esc(t.label)} artwork is selected from your references using its channel count${source.channels.some(c => c.device) ? ' and device names' : ''}.</p>` : ''}</section>`;
@@ -546,12 +615,17 @@ function renderInspector() {
   const root = $('#inspector-content'), n = selectedNode(), w = project.wires.find(w => w.id === selectedWire);
   if (pendingPort && geo.ports[pendingPort]) {
     const start = geo.ports[pendingPort];
-    const destination = start.kind === 'device' ? 'module terminal' : start.connectorRole === 'terminal' ? 'device conductor or a terminal on another module' : 'device conductor or a DIN terminal';
+    const destination = start.kind === 'tag' ? 'module terminal or cable conductor' : start.kind === 'device' ? 'module terminal or connector tag' : start.connectorRole === 'terminal' ? 'device conductor, connector tag, or terminal on another module' : 'device conductor, DIN terminal, or connector tag';
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTING</span><h2>Choose a terminal</h2><p>${esc(start.name)}</p></div><div class="instruction-card">Click a ${destination} to finish the wire. A teal ring appears when it snaps into place.</div><button class="secondary full-width" data-action="cancel-wire">Cancel connection <kbd>Esc</kbd></button>`; return;
   }
   if (w) {
     const a = geo.ports[w.from], b = geo.ports[w.to], r = routing.routes[w.id];
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE PROPERTIES</span><h2>Connection</h2><p>Drag a segment to adjust this wire.</p></div><div class="connection-summary"><span>${esc(a?.name)}</span><span class="connection-arrow">↓</span><span>${esc(b?.name)}</span></div>${wireSegmentControls(w, r)}${field('Wire color', `<div class="color-field"><input type="color" data-wire-prop="color" value="${safeColor(w.color)}"><input data-wire-prop="color" value="${safeColor(w.color)}" pattern="#[0-9a-fA-F]{6}" maxlength="7" aria-label="Wire hex color"></div>`)}${field('Thickness', `<div class="range-field"><input type="range" min="1" max="8" step=".5" data-wire-prop="width" value="${w.width}"><output>${w.width} px</output></div>`)}<div class="route-note ${r?.status === 'blocked' ? 'warning' : ''}">${r?.status === 'blocked' ? 'This path needs more room. Move the obstruction, adjust a segment, or auto-route this wire.' : r?.crossings?.length ? 'Separate lanes · bridges at crossings' : `${w.manual ? 'Manual' : project.settings.autoRoute ? 'Automatic' : 'Fixed'} route · separate wire lanes`}</div><div class="inspector-actions"><button class="secondary" data-action="reconnect">Reconnect wire</button><button class="danger" data-action="delete">Delete wire</button></div>`; return;
+    const tagAction = a?.kind !== 'tag' && b?.kind !== 'tag' ? '<button class="secondary" data-action="replace-with-tags">Replace with tags</button>' : '';
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE PROPERTIES</span><h2>Connection</h2><p>Drag a segment to adjust this wire.</p></div><div class="connection-summary"><span>${esc(a?.name)}</span><span class="connection-arrow">↓</span><span>${esc(b?.name)}</span></div>${wireSegmentControls(w, r)}${field('Wire color', `<div class="color-field"><input type="color" data-wire-prop="color" value="${safeColor(w.color)}"><input data-wire-prop="color" value="${safeColor(w.color)}" pattern="#[0-9a-fA-F]{6}" maxlength="7" aria-label="Wire hex color"></div>`)}${field('Thickness', `<div class="range-field"><input type="range" min="1" max="8" step=".5" data-wire-prop="width" value="${w.width}"><output>${w.width} px</output></div>`)}<div class="route-note ${r?.status === 'blocked' ? 'warning' : ''}">${r?.status === 'blocked' ? 'This path needs more room. Move the obstruction, adjust a segment, or auto-route this wire.' : r?.crossings?.length ? 'Separate lanes · bridges at crossings' : `${w.manual ? 'Manual' : project.settings.autoRoute ? 'Automatic' : 'Fixed'} route · separate wire lanes`}</div><div class="inspector-actions">${tagAction}<button class="secondary" data-action="reconnect">Reconnect wire</button><button class="danger" data-action="delete">Delete wire</button></div>`; return;
+  }
+  if (n?.kind === 'tag') {
+    const names = [...new Map(project.nodes.filter(tag => tag.kind === 'tag' && tag.id !== n.id && tagNameKey(tag.name)).map(tag => [tagNameKey(tag.name), tagName(tag.name)])).values()];
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTOR TAG</span><h2>Named connection</h2><p>Use the same name at both ends to replace a long wire.</p></div>${field('Tag name', textInput('name', n.name, 'maxlength="64" list="tag-name-options" placeholder="e.g. MOTOR_RUN"'))}<datalist id="tag-name-options">${names.map(name => `<option value="${esc(name)}"></option>`).join('')}</datalist>${field('Connection side', `<select data-prop="wireSide">${['left', 'right', 'top', 'bottom'].map(side => `<option value="${side}" ${n.wireSide === side ? 'selected' : ''}>${side[0].toUpperCase() + side.slice(1)} edge</option>`).join('')}</select>`)}<p class="tag-empty-note">Matching names share a connection. Letter case and surrounding spaces are ignored.</p><div id="tag-links">${tagConnectionsMarkup(n)}</div><div class="inspector-actions"><button class="secondary" data-action="add-matching-tag">Add matching tag</button><button class="danger" data-action="delete">Delete tag</button></div>`; return;
   }
   if (n?.kind === 'device') {
     const count = project.wires.filter(w => w.from.startsWith(n.id + ':')).length;
@@ -589,7 +663,7 @@ function finishWire(id) {
   const first = geo.ports[pendingPort], last = geo.ports[id];
   if (!first || !last) return false;
   if (first.id === last.id) { cancelWire(); return false; }
-  if (!compatiblePorts(first, last)) { notify('Connect a device to a module, or connect a DIN terminal to another module.', true); return false; }
+  if (!compatiblePorts(first, last)) { notify(first.kind === 'tag' && last.kind === 'tag' ? 'Give the two tags the same name to link them without a wire.' : 'Connect a cable conductor or module terminal to a compatible terminal or connector tag.', true); return false; }
   const from = last.kind === 'device' ? last : first, to = last.kind === 'device' ? first : last;
   const previous = occupied(from.id), taken = occupied(to.id, previous?.id);
   if (taken && !to.allowMultiple && !to.common) { notify('That terminal is occupied. Select its wire to reconnect or delete it.', true); return false; }
@@ -741,7 +815,7 @@ canvas.addEventListener('pointerup', event => {
     const p = world(event), x1 = Math.min(active.start.x, p.x), y1 = Math.min(active.start.y, p.y), x2 = Math.max(active.start.x, p.x), y2 = Math.max(active.start.y, p.y);
     if (!active.additive) selected.clear();
     if (Math.abs(x2 - x1) > 3 || Math.abs(y2 - y1) > 3) {
-      for (const n of project.nodes) { const w = n.kind === 'module' ? MODULE_TYPES[n.type].width : deviceWidth(n), h = n.kind === 'module' ? MODULE_TYPES[n.type].height : deviceHeight(n); if (n.x >= x1 && n.x + w <= x2 && n.y >= y1 && n.y + h <= y2) selected.add(n.id); }
+      for (const n of project.nodes) { const { width: w, height: h } = nodeSize(n); if (n.x >= x1 && n.x + w <= x2 && n.y >= y1 && n.y + h <= y2) selected.add(n.id); }
     }
     render(false);
   }
@@ -752,9 +826,9 @@ canvas.addEventListener('dblclick', event => { if (event.target.closest('[data-r
 
 function findFreePosition(node, desired) {
   const type = node.kind === 'module' ? MODULE_TYPES[node.type] : null;
-  const w = type ? type.width : deviceWidth(node);
+  const size = nodeSize(node), w = size.width;
   const top = type ? Math.max(0, -(type.header?.y ?? -36)) : 0;
-  const h = type ? Math.max(type.height, type.header ? type.header.y + type.header.height : 0) + top : deviceHeight(node);
+  const h = type ? Math.max(type.height, type.header ? type.header.y + type.header.height : 0) + top : size.height;
   const obstacles = geometry(project.nodes, MODULE_TYPES).obstacles;
   const free = (x, y) => obstacles.every(r => x + w + 45 < r.x || x - 45 > r.x + r.width || y - top + h + 45 < r.y || y - top - 45 > r.y + r.height);
   const candidates = [];
@@ -782,6 +856,36 @@ function addDevice(count) {
   fitBoard();
   $('[data-prop="name"]')?.focus(); $('[data-prop="name"]')?.select();
 }
+function addTag(name = nextTagName(project.nodes), wireSide = 'right') {
+  commitTextEdit();
+  if (project.nodes.length >= 500) return notify('This project already has 500 items. Remove an item before adding another tag.', true);
+  const c = viewportCenter(), n = newTag(name, { wireSide });
+  const position = findConnectorTagPosition({ nodes: project.nodes, types: MODULE_TYPES,
+    desired: { x: c.x - TAG_WIDTH / 2, y: c.y - TAG_HEIGHT / 2 }, grid: project.settings.grid,
+    snapToGrid: project.settings.snap, routes: routing.routes });
+  if (!position) return notify('No clear space for a tag here. Pan to an open area, then add the tag.', true);
+  Object.assign(n, position);
+  change(() => { project.nodes.push(n); clearSelection(); selected.add(n.id); }, 'Connector tag added', { preserveRoutes: true });
+  jumpToNode(n.id);
+  $('[data-prop="name"]')?.focus(); $('[data-prop="name"]')?.select();
+}
+function addMatchingTag() {
+  const n = selectedNode(); if (n?.kind !== 'tag') return;
+  if (!tagNameKey(n.name)) return notify('Enter a tag name before adding a matching connector.', true);
+  addTag(n.name, n.wireSide);
+}
+function replaceSelectedWireWithTags() {
+  if (!selectedWire) return;
+  commitTextEdit();
+  try {
+    const before = clone(project);
+    const result = replaceWireWithTags(project, selectedWire, MODULE_TYPES, routing);
+    project = result.project; routing = result.routing;
+    remember(before); clearSelection(); selected.add(result.tags[0].id);
+    render(false); saveLocal(); jumpToNode(result.tags[0].id);
+    notify(`Wire replaced with ${result.tags[0].name} tags · Undo restores the original wire`);
+  } catch (error) { notify(error.message || 'Could not place both tags. Add connector tags manually in open space.', true); }
+}
 function deleteSelection() {
   if (!selected.size && !selectedWire) return;
   change(() => {
@@ -791,7 +895,8 @@ function deleteSelection() {
 }
 function duplicateSelection() {
   const copy = project.nodes.filter(n => selected.has(n.id)); if (!copy.length) return;
-  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
+  if (copy.length === 1 && copy[0].kind === 'tag') return addTag(copy[0].name, copy[0].wireSide);
+  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
 }
 function setNodeProperty(prop, value, element = null) {
   const n = selectedNode(); if (!n) return;
@@ -803,6 +908,15 @@ function setNodeProperty(prop, value, element = null) {
     }
   }
   if (prop === 'wireCount') value = Number(value) === 4 ? 4 : 2;
+  if (prop === 'name' && n.kind === 'tag') {
+    value = tagName(value);
+    if (element) element.value = value;
+    if (textEdit?.element === element) {
+      n.name = value; commitTextEdit(); renderBoard(false); renderNavigation(); renderDeviceList(); saveLocal();
+    } else change(() => { n.name = value; }, undefined, false);
+    const links = $('#tag-links'); if (links) links.innerHTML = tagConnectionsMarkup(n);
+    return;
+  }
   if (['name', 'cable', 'slot', 'rio'].includes(prop)) value = String(value).slice(0, prop === 'name' ? 100 : 40);
   if (['topRowName', 'bottomRowName'].includes(prop)) {
     if (n.kind !== 'module' || n.type !== 'DIN_RESISTOR') return;
@@ -872,8 +986,11 @@ document.addEventListener('input', event => {
   if (['name', 'cable', 'rio', 'slot', 'topRowName', 'bottomRowName'].includes(prop) || el.id === 'project-title') {
     if (!textEdit || textEdit.element !== el) textEdit = { element: el, before: clone(project) };
     if (el.id === 'project-title') project.title = el.value.slice(0, 90) || 'Untitled wiring';
-    else { const n = selectedNode(); if (!n) return; n[prop] = el.value.slice(0, prop === 'name' ? 100 : ['topRowName', 'bottomRowName'].includes(prop) ? 24 : 40); }
+    else { const n = selectedNode(); if (!n) return; n[prop] = el.value.slice(0, prop === 'name' ? (n.kind === 'tag' ? 64 : 100) : ['topRowName', 'bottomRowName'].includes(prop) ? 24 : 40); }
     renderBoard(false); renderNavigation(); renderDeviceList(); saveLocal();
+    if (prop === 'name' && selectedNode()?.kind === 'tag') {
+      const links = $('#tag-links'); if (links) links.innerHTML = tagConnectionsMarkup(selectedNode());
+    }
     if (['topRowName', 'bottomRowName'].includes(prop)) {
       const list = $('#inspector-content .channel-schedule'), n = selectedNode();
       if (list && n?.type === 'DIN_RESISTOR') list.outerHTML = moduleChannelsMarkup(n);
@@ -918,12 +1035,12 @@ async function imageData(type) {
   imageCache.set(type, result); return result;
 }
 async function exportPNG() {
-  if (!project.nodes.length) return notify('Add a module or device before exporting.', true);
+  if (!project.nodes.length) return notify('Add a module, cable, or connector tag before exporting.', true);
   const epoch = ++exportEpoch;
   const button = $('[data-action="confirm-export"]'); button.disabled = true; const previousLabel = button.textContent; button.textContent = 'Preparing PNG…';
   try {
     const embedded = {};
-    await Promise.all(Object.keys(MODULE_TYPES).map(async type => { embedded[type] = await imageData(type); }));
+    await Promise.all([...new Set(project.nodes.filter(n => n.kind === 'module').map(n => n.type))].map(async type => { embedded[type] = await imageData(type); }));
     if (epoch !== exportEpoch || !$('#export-dialog').open) return;
     computeRoutes({ preserveRoutes: true });
     const scope = $('#export-scope').value;
@@ -943,7 +1060,7 @@ async function exportPNG() {
     const actualScale = Math.min(scale, 12000 / width, 12000 / height, Math.sqrt(48000000 / (width * height)));
     const x = b.x - margin, y = b.y - margin - titleHeight;
     const visibleWireIds = new Set(exportWires.map(w => w.id));
-    const content = exportWires.map(w => wireMarkup(w, true, visibleWireIds)).join('') + exportNodes.map(n => n.kind === 'module' ? moduleMarkup(n, true, embedded) : deviceMarkup(n, true)).join('');
+    const content = exportWires.map(w => wireMarkup(w, true, visibleWireIds)).join('') + exportNodes.map(n => nodeMarkup(n, true, embedded)).join('');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(width * actualScale)}" height="${Math.ceil(height * actualScale)}" viewBox="${x} ${y} ${width} ${height}" font-family="Arial, Helvetica, sans-serif">${transparent ? '' : `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#ffffff"/>`}${title ? `<text x="${b.x}" y="${b.y - 20}" font-size="22" font-weight="700" fill="#20303d">${esc(exportTitle)}</text>` : ''}${content}</svg>`;
     const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     let image;
@@ -956,7 +1073,7 @@ async function exportPNG() {
     if (epoch !== exportEpoch || !$('#export-dialog').open) return;
     const alpha = ctx.getImageData(0, 0, 1, 1).data[3];
     download(blob, fileName('.png', exportTitle)); $('#export-dialog').close();
-    $('#status-message').dataset.export = JSON.stringify({ width: output.width, height: output.height, transparent, cornerAlpha: alpha, bytes: blob.size, scope, modules: exportNodes.filter(n => n.kind === 'module').length, devices: exportNodes.filter(n => n.kind === 'device').length, wires: exportWires.length });
+    $('#status-message').dataset.export = JSON.stringify({ width: output.width, height: output.height, transparent, cornerAlpha: alpha, bytes: blob.size, scope, modules: exportNodes.filter(n => n.kind === 'module').length, devices: exportNodes.filter(n => n.kind === 'device').length, tags: exportNodes.filter(n => n.kind === 'tag').length, wires: exportWires.length });
     notify(`PNG exported · ${output.width} × ${output.height} · ${transparent ? 'transparent background' : 'white background'}`);
   } catch (error) { notify(error.message || 'Export failed. Try again at a smaller scale.', true); }
   finally { button.disabled = false; button.textContent = previousLabel; }
@@ -965,6 +1082,7 @@ async function exportPNG() {
 const actions = {
   undo, redo, 'save-project': saveProject, 'open-project': () => $('#project-file').click(),
   'add-2wire': () => addDevice(2), 'add-4wire': () => addDevice(4),
+  'add-tag': () => addTag(), 'add-matching-tag': addMatchingTag, 'replace-with-tags': replaceSelectedWireWithTags,
   'zoom-in': () => zoomBy(1.2), 'zoom-out': () => zoomBy(1 / 1.2), fit: () => focusModule(''),
   'select-tool': () => { tool = 'select'; syncControls(); }, 'pan-tool': () => { tool = 'pan'; syncControls(); },
   'auto-route': () => rerouteWires(),
@@ -997,10 +1115,11 @@ const actions = {
 };
 $('#export-dialog').addEventListener('cancel', () => { exportEpoch++; });
 document.addEventListener('click', event => {
+  const tag = event.target.closest('[data-jump-tag]'); if (tag) return jumpToNode(tag.dataset.jumpTag);
   const focus = event.target.closest('[data-focus-module]'); if (focus) return focusModule(focus.dataset.focusModule);
   const moduleButton = event.target.closest('[data-add-module]'); if (moduleButton) return addModule(moduleButton.dataset.addModule);
   const device = event.target.closest('[data-select-node]');
-  if (device) { selected = new Set([device.dataset.selectNode]); selectedWire = null; pendingPort = null; render(false); const n = selectedNode(); if (n) { view.x = n.x + deviceWidth(n) / 2 - stage.clientWidth / view.zoom / 2; view.y = n.y + deviceHeight(n) / 2 - stage.clientHeight / view.zoom / 2; syncView(); } return; }
+  if (device) return jumpToNode(device.dataset.selectNode);
   const side = event.target.closest('[data-device-side]'); if (side) return setNodeProperty('cableSide', side.dataset.deviceSide);
   const button = event.target.closest('[data-action]'); if (button && actions[button.dataset.action]) actions[button.dataset.action]();
 });
@@ -1053,6 +1172,7 @@ document.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'v') { tool = 'select'; syncControls(); }
   else if (event.key.toLowerCase() === 'h') { tool = 'pan'; syncControls(); }
   else if (event.key === 'Enter' && event.target.closest('[data-port]')) { const id = event.target.closest('[data-port]').dataset.port; pendingPort ? finishWire(id) : beginWire(id); }
+  else if (event.key === 'Enter' && event.target.closest('[data-tag-node]')) { event.preventDefault(); jumpToNode(event.target.closest('[data-tag-node]').dataset.node); }
   else if (event.key === 'Enter' && event.target.closest('[data-wire]')) { event.preventDefault(); selected.clear(); selectedWire = event.target.closest('[data-wire]').dataset.wire; selectedSegmentIndex = 0; render(false); canvas.querySelector(`[data-wire="${CSS.escape(selectedWire)}"] [data-wire-segment]`)?.focus(); }
 });
 document.addEventListener('keyup', event => { if (event.key === ' ') { spaceDown = false; syncControls(); } });

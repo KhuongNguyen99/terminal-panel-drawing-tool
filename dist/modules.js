@@ -145,7 +145,7 @@ export const MODULE_TYPES = Object.freeze({
     'Two analog output channels, with one positive and one negative connection per channel.'),
   EX_AI: template('EX_AI', 'Ex-AI', '2 × I · 2-wire HART', 'assets/module-ex-ai.svg', exBody, exPorts,
     'The CH0 and CH1 negative/positive terminals annotated in your Ex-AI reference.'),
-  DIN_RESISTOR: template('DIN_RESISTOR', 'DIN Resistor Rail Terminal Block', '10 terminals · 10 top + 10 bottom connectors', 'assets/module-din-resistor.png', dinBody, dinPorts,
+  DIN_RESISTOR: template('DIN_RESISTOR', 'DIN Resistor Rail Terminal Block', '', 'assets/module-din-resistor.png', dinBody, dinPorts,
     'Each connection point represents both holes at that end of a terminal. Name the top and bottom rows independently; connectors are numbered 1–10 from left to right.', {
       width: 640, height: 650, connectorRole: 'terminal',
       header: Object.freeze({ x: 12, y: -100, width: 616, height: 32 }),

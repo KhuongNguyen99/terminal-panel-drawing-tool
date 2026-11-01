@@ -49,6 +49,21 @@ All device labels use **210 × 60 px** by default, including four-wire cables. E
 
 Four-wire cables use **red, black, white, green** from top to bottom. Older saved projects receive this color-order update once when opened: the third and fourth conductors and their connected wires receive the new default colors while retaining their physical endpoints, module connections, and saved paths. Custom colors stay with their existing physical conductors. Two-wire cables continue to use black and white.
 
+## Connector tags
+
+Connector tags represent a connection between separate areas of the drawing while keeping the visible wires short.
+
+1. Click **Connector tag** in the component library. Select it and edit **Tag name** in Properties.
+2. Choose **Connection side**: left, right, top, or bottom. Wire the tag's single connector dot to a device conductor or a module terminal, then move the tag near that endpoint.
+3. Click **Add matching tag**, move the new tag near the other endpoint, and connect it with another short wire. Tags with matching names represent the same virtual connection; a long wire is not drawn between them.
+4. Select a tag and click an entry in its matching-tags list in Properties to jump to the other location.
+
+Names match after trimming leading/trailing spaces and ignoring letter case: `Pressure`, `PRESSURE`, and ` pressure ` belong to the same group. Keep different connections under different names. Tag positions, connection sides, names, and their local wires are saved with the project, restored on reopen, and included in PNG export.
+
+To shorten an existing long wire, select it and click **Replace with tags**. The editor creates a pair with an unused name such as `NET1` and two short local wires, preserving the original wire's color and thickness. You can rename both tags afterward using the same name. One **Undo** immediately restores the original wire. The conversion keeps other wire paths fixed and is rejected if a new tag would block a new connection or a previously clear wire. Wires already ending at a tag use the normal tag and wire controls instead of this conversion.
+
+Focusing a module or exporting the current slot includes tags wired directly to that module and tags wired to its included devices, so local short wires remain complete. Matching tags elsewhere on the canvas do not pull their remote modules or devices into that scoped drawing. Export the entire diagram to include all locations.
+
 ## Populated RIO schedule
 
 **Full RIO schedule** opens `?project=rio-schedule` in its own autosaved workspace, preserving the previous project. The supplied sheets are populated as 22 modules, 100 physical channels, 56 device labels, and 44 spares. All 26 handwritten cable numbers are included; the other 30 assigned device labels have blank cable numbers. The default for a new browser with no saved work is also the complete schedule.
@@ -85,7 +100,7 @@ Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The 
 - `dist/independent-routing.js`: fixed wire paths, optional live routing, and explicit single/all-wire rerouting.
 - `dist/modules.js`: exact channel labels and reference-based module geometry.
 - `dist/schedule.js`: deduplicated source schedule, populated labels, and known connections.
-- `dist/schedule-navigation.js`: slot grouping for canvas navigation and exports.
+- `dist/schedule-navigation.js`: local slot grouping, including connector tags, for canvas navigation and exports.
 - `dist/assets/`: scalable module front views and their original raster references, with transparent exteriors.
 - `dist/index.html`, `dist/styles.css`: responsive editor interface.
 

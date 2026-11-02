@@ -58,7 +58,9 @@ Connector tags represent a connection between separate areas of the drawing whil
 3. Click **Add matching tag**, move the new tag near the other endpoint, and connect it with another short wire. Tags with matching names represent the same virtual connection; a long wire is not drawn between them.
 4. Select a tag and click an entry in its matching-tags list in Properties to jump to the other location.
 
-Names match after trimming leading/trailing spaces and ignoring letter case: `Pressure`, `PRESSURE`, and ` pressure ` belong to the same group. Keep different connections under different names. Tag positions, connection sides, names, and their local wires are saved with the project, restored on reopen, and included in PNG export.
+Set a selected tag's **Width** and **Height** in Properties, or drag its right, bottom, or bottom-right resize handle. The connector follows the selected edge, and connected wires stay attached. Resize handles follow the grid when Snap is on; arrow keys nudge a focused handle and Escape cancels a drag. **Reset size** restores **160 × 40 px**. Each tag has its own size; **Add matching tag** and Duplicate copy the selected tag's dimensions. Width accepts 80–1000 px and height accepts 30–600 px.
+
+Names match after trimming leading/trailing spaces and ignoring letter case: `Pressure`, `PRESSURE`, and ` pressure ` belong to the same group. Keep different connections under different names. Tag positions, sizes, connection sides, names, and their local wires are saved with the project, restored on reopen, and included in PNG export.
 
 To shorten an existing long wire, select it and click **Replace with tags**. The editor creates a pair with an unused name such as `NET1` and two short local wires, preserving the original wire's color and thickness. You can rename both tags afterward using the same name. One **Undo** immediately restores the original wire. The conversion keeps other wire paths fixed and is rejected if a new tag would block a new connection or a previously clear wire. Wires already ending at a tag use the normal tag and wire controls instead of this conversion.
 

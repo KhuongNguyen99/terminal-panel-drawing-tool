@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { TAG_WIDTH, TAG_HEIGHT, geometry, matchingTags, normalizeProject } from '../dist/model.js';
+import { TAG_WIDTH, TAG_HEIGHT, tagWidth, tagHeight, geometry, matchingTags, normalizeProject } from '../dist/model.js';
 import { captureManualRoute } from '../dist/manual-routing.js';
 import { routeWithPreferences } from '../dist/independent-routing.js';
 import { findConnectorTagPosition, replaceWireWithTags } from '../dist/connector-tag-actions.js';
@@ -48,6 +48,58 @@ test('tag placement has a bounded search and reports a fully occupied area', () 
   assert.equal(findConnectorTagPosition({ nodes, types, desired: { x: 0, y: 0 } }), null);
 });
 
+test('resized tag placement leaves clearance around the whole requested footprint', () => {
+  const desired = { x: 0, y: 0 };
+  const cases = [
+    { width: '320', height: 40, nodes: [device({ x: 250, y: 0 })] },
+    { width: 160, height: '120', nodes: [device({ x: 0, y: 100 })] },
+  ];
+  for (const options of cases) {
+    const input = { types: MODULE_TYPES, desired, ...options };
+    const before = copy(input);
+    freeze(input);
+    assert.deepEqual(findConnectorTagPosition({ ...input, width: undefined, height: undefined }), desired,
+      'the default-size tag fits at this position');
+    const position = findConnectorTagPosition(input);
+    assert.ok(position);
+    assert.notDeepEqual(position, desired, 'the larger tag must move away from the neighboring label');
+    const obstacle = geometry(options.nodes, MODULE_TYPES).obstacles[0];
+    assert.ok(position.x + tagWidth(options) + 20 < obstacle.x || position.x - 20 > obstacle.x + obstacle.width ||
+      position.y + tagHeight(options) + 20 < obstacle.y || position.y - 20 > obstacle.y + obstacle.height,
+    'the resized tag, including its margin, clears the neighboring label');
+    assert.deepEqual(input, before, 'placement does not alter the requested size or existing label');
+  }
+  const narrow = { types: MODULE_TYPES, desired, nodes: [device({ x: 130, y: 0 })], width: 80, height: 30 };
+  assert.deepEqual(findConnectorTagPosition(narrow), desired, 'a smaller tag can use space that a default tag cannot');
+  assert.notDeepEqual(findConnectorTagPosition({ ...narrow, width: undefined, height: undefined }), desired);
+  assert.deepEqual(findConnectorTagPosition({ ...narrow, width: -1, height: 0 }), desired, 'invalid small sizes clamp to the minimum footprint');
+  assert.deepEqual(findConnectorTagPosition({ ...narrow, width: Infinity, height: 'invalid' }),
+    findConnectorTagPosition({ ...narrow, width: undefined, height: undefined }), 'non-finite sizes use the default footprint');
+  const large = { id: 'large', kind: 'tag', name: 'NET1', width: 1000, height: 600, x: 0, y: 0 };
+  const besideLarge = findConnectorTagPosition({ nodes: [large], types: MODULE_TYPES, desired, width: 1000, height: 600 });
+  assert.ok(besideLarge, 'the bounded search can place a maximum-sized duplicate beside its source');
+  assert.ok(besideLarge.x + 1020 < 0 || besideLarge.x - 20 > 1000 || besideLarge.y + 620 < 0 || besideLarge.y - 20 > 600);
+});
+
+test('resized tag placement avoids wires beyond the default label bounds', () => {
+  const desired = { x: 0, y: 0 };
+  for (const options of [
+    { width: 320, height: 40, points: [{ x: 250, y: -500 }, { x: 250, y: 500 }] },
+    { width: 160, height: 120, points: [{ x: -500, y: 100 }, { x: 500, y: 100 }] },
+  ]) {
+    const routes = freeze({ wire: { points: options.points } });
+    const input = { nodes: [], types: MODULE_TYPES, desired, routes };
+    assert.deepEqual(findConnectorTagPosition(input), desired);
+    const position = findConnectorTagPosition({ ...input, width: options.width, height: options.height });
+    assert.ok(position);
+    assert.notDeepEqual(position, desired, 'the whole resized label must avoid the visible wire');
+    const [a, b] = options.points;
+    assert.ok(position.x + options.width + 10 < Math.min(a.x, b.x) || position.x - 10 > Math.max(a.x, b.x) ||
+      position.y + options.height + 10 < Math.min(a.y, b.y) || position.y - 10 > Math.max(a.y, b.y));
+    assert.deepEqual(findConnectorTagPosition({ ...input, width: options.width, height: options.height, ignoreWireIds: ['wire'] }), desired);
+  }
+});
+
 test('conversion creates a matching pair, keeps wire styling and manual neighbors, and survives save/reopen', () => {
   const project = fixture();
   project.nodes.push({ id: 'existing-tag', kind: 'tag', name: 'net1', wireSide: 'right', x: -500, y: 0 });
@@ -65,6 +117,7 @@ test('conversion creates a matching pair, keeps wire styling and manual neighbor
   assert.equal(result.project.wires.length, project.wires.length + 1);
   assert.equal(result.project.wires.some(w => w.id === 'selected'), false);
   assert.deepEqual(result.tags.map(t => [t.name, t.wireSide]), [['NET2', 'left'], ['NET2', 'right']]);
+  assert.deepEqual(result.tags.map(t => [tagWidth(t), tagHeight(t)]), [[160, 40], [160, 40]], 'wire replacement keeps the default tag dimensions');
   assert.deepEqual(matchingTags(result.project.nodes, result.tags[0]).map(t => t.id), [result.tags[1].id]);
   assert.deepEqual(result.routing.routes.neighbor.points, baseline.routes.neighbor.points);
   assert.deepEqual(result.project.wires.find(w => w.id === 'neighbor').manual, neighbor.manual);
@@ -128,5 +181,44 @@ test('conversion guards project limits before creating unsaveable items', () => 
     freeze(oversized);
     assert.throws(() => replaceWireWithTags(oversized, 'selected', MODULE_TYPES), /500 items or 2,000 wires/);
     assert.deepEqual(oversized, before);
+  }
+});
+
+test('resizing any tag edge follows its endpoint and preserves manual bends and unrelated wires', () => {
+  const cases = {
+    left: { device: { x: 0, y: 300, wireSide: 'right' }, manual: [[210, 320], [260, 320], [260, 220], [420, 220], [420, 320], [500, 320]] },
+    right: { device: { x: 900, y: 300, wireSide: 'left' }, manual: [[900, 320], [850, 320], [850, 220], [800, 220], [800, 320], [660, 320]] },
+    top: { device: { x: 0, y: 140, wireSide: 'right' }, manual: [[210, 160], [300, 160], [300, 80], [580, 80], [580, 300]] },
+    bottom: { device: { x: 900, y: 500, wireSide: 'left' }, manual: [[900, 520], [820, 520], [820, 620], [580, 620], [580, 340]] },
+  };
+  for (const [side, setup] of Object.entries(cases)) for (const manual of [false, true]) for (const [width, height] of [[240, 80], [243, 83]]) {
+    const project = normalized([
+      device(setup.device),
+      { id: 'tag', kind: 'tag', name: 'NET1', wireSide: side, x: 500, y: 300 },
+      device({ id: 'unrelated-device', x: 0, y: 900 }),
+      { id: 'unrelated-tag', kind: 'tag', name: 'NET2', wireSide: 'left', x: 600, y: 900 },
+    ], [wire('resized', 'device:black', 'tag:connector'), wire('unrelated', 'unrelated-device:black', 'unrelated-tag:connector')]);
+    const initialGeometry = geometry(project.nodes, MODULE_TYPES);
+    const manualPoints = setup.manual.map(([x, y]) => ({ x, y }));
+    if (manual) project.wires[0].manual = captureManualRoute(manualPoints, initialGeometry.ports['device:black'], initialGeometry.ports['tag:connector']);
+    const baseline = route(project);
+    assert.equal(baseline.diagnostics.blocked, 0);
+    for (const w of project.wires) w.savedRoute = baseline.savedRoutes[w.id];
+    Object.assign(project.nodes.find(n => n.id === 'tag'), { width, height });
+    const resizedGeometry = geometry(project.nodes, MODULE_TYPES), resized = route(project);
+    const points = resized.routes.resized.points, endpoint = resizedGeometry.ports['tag:connector'];
+    assert.equal(resized.diagnostics.blocked, 0, `${side} tag remains routable after resizing`);
+    assert.equal(resized.diagnostics.visited, 0, 'resizing adapts fixed routes without rerouting the diagram');
+    assert.deepEqual(points[0], baseline.routes.resized.points[0], 'the cable endpoint stays fixed');
+    assert.deepEqual(points.at(-1), { x: endpoint.x, y: endpoint.y }, 'the wire follows the resized edge midpoint');
+    assert.notDeepEqual(points.at(-1), baseline.routes.resized.points.at(-1));
+    assert.deepEqual(resized.routes.unrelated.points, baseline.routes.unrelated.points, 'the unrelated wire does not move');
+    if (manual) for (const bend of manualPoints.slice(1, -2)) {
+      assert.ok(points.some(p => p.x === bend.x && p.y === bend.y), 'interior manual bends stay where they were placed');
+    }
+    for (const w of project.wires) w.savedRoute = resized.savedRoutes[w.id];
+    const reopened = normalizeProject(copy(project), MODULE_TYPES), restored = route(reopened);
+    assert.deepEqual(restored.routes.resized.points, points, 'reopening retains the resized endpoint and wire geometry');
+    assert.deepEqual(restored.routes.unrelated.points, baseline.routes.unrelated.points);
   }
 });

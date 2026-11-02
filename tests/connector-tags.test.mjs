@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { FOUR_WIRE_ORDER_REVISION, TAG_WIDTH, TAG_HEIGHT, boundsOf, compatiblePorts, geometry, matchingTags, nextTagName, normalizeProject, tagName, tagNameKey } from '../dist/model.js';
+import { FOUR_WIRE_ORDER_REVISION, TAG_WIDTH, TAG_HEIGHT, TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT, boundsOf, compatiblePorts, geometry, matchingTags, nextTagName, normalizeProject, tagName, tagNameKey, tagWidth, tagHeight } from '../dist/model.js';
 
 const tag = (extra = {}) => ({ id: 'tag-a', kind: 'tag', name: 'NET1', wireSide: 'left', x: 400, y: 100, ...extra });
 const device = (extra = {}) => ({ id: 'device', kind: 'device', name: 'Sensor', cable: '17', wireCount: 2, x: 0, y: 100, wireSide: 'right', cableSide: 'left', colors: {}, ...extra });
@@ -26,6 +26,61 @@ test('connector tags expose one grid-aligned port on any selected edge', () => {
     assert.equal(p.name, 'NET1 · connector');
     assert.deepEqual(obstacles, [{ id: n.id, nodeId: n.id, x: n.x, y: n.y, width: 160, height: 40 }]);
   }
+});
+
+test('resized tags share their imported dimensions across connectors, obstacles, and export bounds', () => {
+  const positions = { left: [0, 60.5], right: [241, 60.5], top: [120.5, 0], bottom: [120.5, 121] };
+  for (const [side, [x, y]] of Object.entries(positions)) {
+    const first = normalize(project([tag({ wireSide: side, width: '241.4', height: '120.6' })]));
+    const n = first.nodes[0];
+    assert.deepEqual([n.width, n.height], [241, 121]);
+    const { ports, obstacles } = geometry(first.nodes, MODULE_TYPES);
+    assert.deepEqual(Object.keys(ports), ['tag-a:connector'], 'resizing keeps the stable connector identity');
+    assert.deepEqual([ports['tag-a:connector'].x, ports['tag-a:connector'].y], [n.x + x, n.y + y], side);
+    assert.deepEqual(obstacles, [{ id: n.id, nodeId: n.id, x: n.x, y: n.y, width: 241, height: 121 }]);
+    assert.deepEqual(boundsOf(first.nodes, MODULE_TYPES), { x: 391, y: 91, width: 259, height: 139 });
+    assert.deepEqual(normalize(JSON.parse(JSON.stringify(first))), first);
+  }
+});
+
+test('tag sizes use safe defaults, clamp imports, and leave absent dimensions backward compatible', () => {
+  assert.deepEqual([TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT], [80, 1000, 30, 600]);
+  for (const value of [undefined, null, '', ' ', NaN, Infinity, -Infinity, 'bad', true, [], {}]) {
+    assert.equal(tagWidth({ width: value }), 160);
+    assert.equal(tagHeight({ height: value }), 40);
+  }
+  const input = project([
+    tag({ id: 'old' }),
+    tag({ id: 'empty', width: '', height: null }),
+    tag({ id: 'small', width: -50, height: 0 }),
+    tag({ id: 'large', width: 10000, height: '10000' }),
+    tag({ id: 'invalid', width: {}, height: false }),
+    tag({ id: 'width-only', width: '300.7' }),
+  ]);
+  const first = normalize(input);
+  for (const n of first.nodes.slice(0, 2)) {
+    assert.equal(Object.hasOwn(n, 'width'), false);
+    assert.equal(Object.hasOwn(n, 'height'), false);
+    assert.deepEqual([tagWidth(n), tagHeight(n)], [160, 40]);
+  }
+  assert.deepEqual(first.nodes.slice(2).map(n => [n.width, n.height]), [[80, 30], [1000, 600], [160, 40], [301, undefined]]);
+  assert.deepEqual(boundsOf([first.nodes[3]], MODULE_TYPES), { x: 391, y: 91, width: 1018, height: 618 });
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(first))), first);
+});
+
+test('resized connected tags retain dimensions and manual routes after save and reopen', () => {
+  const nodes = [device(), tag({ wireSide: 'right', width: 260, height: 100 })];
+  const { ports } = geometry(nodes, MODULE_TYPES);
+  const from = ports['device:black'], to = ports['tag-a:connector'];
+  const point = p => ({ x: p.x, y: p.y });
+  const manual = { points: [point(from), { x: 250, y: 120 }, { x: 250, y: 60 }, { x: 700, y: 60 }, { x: 700, y: 150 }, point(to)],
+    from: { ...point(from), side: from.side }, to: { ...point(to), side: to.side } };
+  const input = project(nodes, [wire('connected', from.id, to.id, { manual, savedRoute: manual })]);
+  const first = normalize(input), reopened = normalize(JSON.parse(JSON.stringify(first)));
+  assert.deepEqual(first.wires, input.wires);
+  assert.deepEqual(reopened, first);
+  assert.deepEqual([reopened.nodes[1].width, reopened.nodes[1].height], [260, 100]);
+  assert.deepEqual(point(geometry(reopened.nodes, MODULE_TYPES).ports['tag-a:connector']), { x: 660, y: 150 });
 });
 
 test('tag names are bounded while explicit blank names remain unlinked after reload', () => {
@@ -140,13 +195,13 @@ test('legacy four-wire color migration also preserves connections to tags', () =
   assert.equal(result.wires[0].color, '#ffffff');
 });
 
-test('tag-free projects retain their wiring and export bounds use the fixed tag size', () => {
+test('tag-free projects retain their wiring and old tags keep their default export bounds', () => {
   const old = project([device(), module()], [wire('old', 'device:black', 'module:ch0-minus')]);
   const first = normalize(old);
   assert.deepEqual(normalize(JSON.parse(JSON.stringify(first))), first);
   assert.equal(first.nodes.some(n => n.kind === 'tag'), false);
   assert.deepEqual(first.wires, old.wires);
-  const n = tag({ x: 50, y: 80, width: 999, height: 999 });
+  const n = tag({ x: 50, y: 80 });
   assert.deepEqual(boundsOf([n], MODULE_TYPES), { x: 41, y: 71, width: 178, height: 100 });
   const b = boundsOf([n], MODULE_TYPES, { lead: { points: [{ x: -20, y: 100 }, { x: 50, y: 100 }] } });
   assert.equal(b.x, -20);

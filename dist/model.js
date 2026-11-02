@@ -13,6 +13,10 @@ export const DEVICE_MAX_HEIGHT = 600;
 export const deviceMinHeight = () => 60;
 export const TAG_WIDTH = 160;
 export const TAG_HEIGHT = 40;
+export const TAG_MIN_WIDTH = 80;
+export const TAG_MAX_WIDTH = 1000;
+export const TAG_MIN_HEIGHT = 30;
+export const TAG_MAX_HEIGHT = 600;
 
 export const tagName = value => value == null ? 'NET1' : String(value).trim().slice(0, 64).trim();
 export const tagNameKey = value => String(value ?? '').trim().toLowerCase();
@@ -39,6 +43,8 @@ function dimension(value, fallback, min, max) {
 
 export const deviceWidth = node => dimension(node?.width, DEVICE_WIDTH, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH);
 export const deviceHeight = node => dimension(node?.height, DEVICE_HEIGHT, deviceMinHeight(node), DEVICE_MAX_HEIGHT);
+export const tagWidth = node => dimension(node?.width, TAG_WIDTH, TAG_MIN_WIDTH, TAG_MAX_WIDTH);
+export const tagHeight = node => dimension(node?.height, TAG_HEIGHT, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT);
 export function devicePortY(node, index) {
   const count = Number(node?.wireCount) === 4 ? 4 : 2;
   const height = deviceHeight(node);
@@ -162,9 +168,10 @@ export function geometry(nodes, types) {
     } else if (node.kind === 'tag') {
       const side = ['left', 'right', 'top', 'bottom'].includes(node.wireSide) ? node.wireSide : 'right';
       const id = `${node.id}:connector`;
-      const x = side === 'left' ? 0 : side === 'right' ? TAG_WIDTH : TAG_WIDTH / 2;
-      const y = side === 'top' ? 0 : side === 'bottom' ? TAG_HEIGHT : TAG_HEIGHT / 2;
-      obstacles.push({ id: node.id, nodeId: node.id, x: node.x, y: node.y, width: TAG_WIDTH, height: TAG_HEIGHT });
+      const width = tagWidth(node), height = tagHeight(node);
+      const x = side === 'left' ? 0 : side === 'right' ? width : width / 2;
+      const y = side === 'top' ? 0 : side === 'bottom' ? height : height / 2;
+      obstacles.push({ id: node.id, nodeId: node.id, x: node.x, y: node.y, width, height });
       ports[id] = { id, localId: 'connector', nodeId: node.id, kind: 'tag', side,
         x: node.x + x, y: node.y + y, label: 'connector', name: `${tagName(node.name) || 'Unnamed tag'} · connector` };
     }
@@ -186,7 +193,10 @@ export function normalizeProject(input, types) {
     ids.add(id);
     const n = { id, kind: raw.kind, x: pos(raw.x), y: pos(raw.y), name: str(raw.name) };
     if (n.kind === 'tag') {
-      return { ...n, name: tagName(raw.name), wireSide: ['left', 'right', 'top', 'bottom'].includes(raw.wireSide) ? raw.wireSide : 'right' };
+      const size = {};
+      if (raw.width != null && raw.width !== '') size.width = tagWidth(raw);
+      if (raw.height != null && raw.height !== '') size.height = tagHeight(raw);
+      return { ...n, name: tagName(raw.name), wireSide: ['left', 'right', 'top', 'bottom'].includes(raw.wireSide) ? raw.wireSide : 'right', ...size };
     }
     if (n.kind === 'module') {
       if (!types[raw.type]) throw new Error(`Unknown module type: ${str(raw.type, 24)}`);
@@ -251,7 +261,7 @@ export function boundsOf(nodes, types, routes = {}) {
       include(n.x + Math.max(t.width + 9, header.x + header.width + 9), n.y + Math.max(t.height + 9, header.y + header.height + 8));
     } else {
       include(n.x - 9, n.y - 9);
-      include(n.x + (n.kind === 'tag' ? TAG_WIDTH : deviceWidth(n)) + 9, n.y + (n.kind === 'tag' ? TAG_HEIGHT : deviceHeight(n)) + 9);
+      include(n.x + (n.kind === 'tag' ? tagWidth(n) : deviceWidth(n)) + 9, n.y + (n.kind === 'tag' ? tagHeight(n) : deviceHeight(n)) + 9);
     }
   }
   for (const r of Object.values(routes)) for (const p of r.points || []) include(p.x, p.y);

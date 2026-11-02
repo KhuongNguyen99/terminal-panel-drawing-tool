@@ -1,4 +1,4 @@
-import { TAG_WIDTH, TAG_HEIGHT, clone, compatiblePorts, geometry, makeId, nextTagName, snap } from './model.js';
+import { TAG_WIDTH, TAG_HEIGHT, tagWidth, tagHeight, clone, compatiblePorts, geometry, makeId, nextTagName, snap } from './model.js';
 import { captureManualRoute } from './manual-routing.js';
 import { routeWithPreferences } from './independent-routing.js';
 
@@ -13,12 +13,14 @@ const overlaps = (a, b) => a.left <= b.right && a.right >= b.left && a.top <= b.
 const rect = (x, y, width, height, margin = 0) => ({ left: x - margin, right: x + width + margin, top: y - margin, bottom: y + height + margin });
 const samePoints = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
 
-/** Find a nearby top-left position, leaving room around nodes and visible wires. */
-export function findConnectorTagPosition({ nodes = [], types, desired, grid = 10, snapToGrid = true, routes = {}, ignoreWireIds = [] }) {
+/** Find room for the tag's actual footprint, leaving clearance from nodes and visible wires. */
+export function findConnectorTagPosition({ nodes = [], types, desired, width, height, grid = 10, snapToGrid = true, routes = {}, ignoreWireIds = [] }) {
   if (!Number.isFinite(desired?.x) || !Number.isFinite(desired?.y)) return null;
+  width = tagWidth({ width }); height = tagHeight({ height });
   grid = Number.isFinite(grid) && grid > 0 ? grid : 10;
   const origin = { x: snapToGrid ? snap(desired.x, grid) : desired.x, y: snapToGrid ? snap(desired.y, grid) : desired.y };
-  const step = Math.ceil(40 / grid) * grid;
+  // Keep the search bounded while allowing a large duplicate to clear its source.
+  const step = Math.ceil(Math.max(40, (Math.min(width, height) + NODE_MARGIN + grid) / SEARCH_RADIUS) / grid) * grid;
   const obstacles = geometry(nodes, types).obstacles.map(o => rect(o.x, o.y, o.width, o.height));
   const ignored = new Set(ignoreWireIds), wireSegments = [];
   for (const [id, route] of Object.entries(routes.routes || routes)) {
@@ -37,9 +39,9 @@ export function findConnectorTagPosition({ nodes = [], types, desired, grid = 10
   for (const candidate of candidates) {
     const { x, y } = candidate;
     if (x < -10000 || x > 20000 || y < -10000 || y > 20000) continue;
-    const nodeArea = rect(x, y, TAG_WIDTH, TAG_HEIGHT, NODE_MARGIN);
+    const nodeArea = rect(x, y, width, height, NODE_MARGIN);
     if (obstacles.some(obstacle => overlaps(nodeArea, obstacle))) continue;
-    const wireArea = rect(x, y, TAG_WIDTH, TAG_HEIGHT, WIRE_MARGIN);
+    const wireArea = rect(x, y, width, height, WIRE_MARGIN);
     if (wireSegments.some(segment => overlaps(wireArea, segment))) continue;
     return { x, y };
   }

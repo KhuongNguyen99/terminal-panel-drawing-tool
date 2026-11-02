@@ -61,11 +61,18 @@ for (const side of ['left', 'right']) {
     }));
   });
 }
-dqPorts.push(Object.freeze({
-  id: 'common-0v', label: '0V common', side: 'left', x: CONNECTION_INSET, y: 430,
-  channel: null, signal: '0V', pinY: 430, group: 'Common',
-  description: 'Shared 0 V area shown in the reference; this is not a per-channel terminal assignment.',
-}));
+for (const side of ['left', 'right']) {
+  [387, 406, 425, 444].forEach((sourceY, row) => {
+    dqPorts.push(Object.freeze({
+      // Keep the existing third-left connector ID so saved wires stay attached.
+      id: side === 'left' && row === 2 ? 'common-0v' : `0v-${side}-${row + 1}`,
+      label: '0V', connectionLabel: `0V · ${side} terminal ${row + 1}`,
+      side, x: side === 'left' ? CONNECTION_INSET : WIDTH - CONNECTION_INSET,
+      y: 390 + row * 20, channel: null, signal: '0V',
+      pinY: sourceY * IMAGE_HEIGHT / 486, group: '0V',
+    }));
+  });
+}
 
 const aiPorts = [];
 const aiPhotoRows = [207, 219, 231, 243, 255.5, 268, 280, 292];
@@ -136,7 +143,7 @@ const dinPorts = ['top', 'bottom'].flatMap(side => Array.from({ length: 10 }, (_
 
 export const MODULE_TYPES = Object.freeze({
   DQ: template('DQ', 'DQ', '8 × 24 V DC / 0.5 A', 'assets/module-dq.svg', dqBody, dqPorts,
-    'Eight digital outputs and the shared 0 V area shown in your reference.'),
+    'Eight digital outputs and eight individually connectable 0V terminals.'),
   AI: template('AI', 'AI', '8 channels · 2-wire', 'assets/module-ai.svg', aiBody, aiPorts,
     'Standard eight-channel AI module from the Slot 5 drawing. Negative terminals are above the positive terminals.'),
   AI_RTD: template('AI_RTD', 'AI RTD', '4 × RTD / TC', 'assets/module-ai-rtd.svg', rtdBody, rtdPorts,

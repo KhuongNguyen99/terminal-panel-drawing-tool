@@ -117,7 +117,7 @@ function tagLocation(tag) {
   const connection = tagConnection(tag);
   if (!connection) return `Not wired · X ${Math.round(tag.x)}, Y ${Math.round(tag.y)}`;
   const { node, port } = connection;
-  return node?.kind === 'module' ? `${moduleCaption(node)} · ${port.label || port.localId}` : port.name;
+  return node?.kind === 'module' ? `${moduleCaption(node)} · ${port.connectionLabel || port.label || port.localId}` : port.name;
 }
 function tagNumber(tag) { return project.nodes.filter(n => n.kind === 'tag').findIndex(n => n.id === tag.id) + 1; }
 function jumpToNode(id) {
@@ -596,7 +596,7 @@ function assignmentMarkup(n) {
   if (!m) return '';
   const pending = m.type === 'AI_RTD' && CONDUCTORS[n.wireCount].some(c => !occupied(`${n.id}:${c.key}`))
     ? 'RTD mapping needed: the source does not identify which cable colors connect to M+, M−, I+, and I−.'
-    : m.type === 'DQ' && !occupied(`${n.id}:black`) ? 'Black return remains unassigned. The source shows a shared 0 V area without individual return terminals.' : '';
+    : m.type === 'DQ' && !occupied(`${n.id}:black`) ? 'Connect the black return to an available 0V terminal.' : '';
   return `<section class="assignment-card"><span class="eyebrow">CHANNEL ASSIGNMENT</span><button class="text-button" data-focus-module="${esc(m.id)}">${esc(m.rio)} · Slot ${esc(m.slot)} · CH${a.channel}</button><code>${esc(a.tag)}</code>${!n.cable ? '<small>Cable number was not supplied.</small>' : ''}${pending ? `<p class="mapping-note">${esc(pending)}</p>` : ''}</section>`;
 }
 function moduleChannelsMarkup(n) {

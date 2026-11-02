@@ -153,7 +153,7 @@ export function geometry(nodes, types) {
       for (const port of type.ports) {
         const id = `${node.id}:${port.id}`;
         const label = modulePortLabel(node, port);
-        ports[id] = { ...port, id, label, localId: port.id, nodeId: node.id, kind: 'module', ...(type.connectorRole ? { connectorRole: type.connectorRole } : {}), x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${label}` };
+        ports[id] = { ...port, id, label, localId: port.id, nodeId: node.id, kind: 'module', ...(type.connectorRole ? { connectorRole: type.connectorRole } : {}), x: node.x + port.x, y: node.y + port.y, name: `${node.name || type.label} · ${port.connectionLabel || label}` };
       }
     } else if (node.kind === 'device') {
       const conductors = CONDUCTORS[node.wireCount] || CONDUCTORS[2];

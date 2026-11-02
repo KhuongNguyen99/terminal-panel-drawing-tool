@@ -57,7 +57,7 @@ test('standard AI, DQ, AQ and Ex-AI preserve all annotated channel assignments',
     assert.ok(pair.every(p => p.side === (ch % 2 ? 'right' : 'left')));
   }
   assert.equal(MODULE_TYPES.DQ.ports.filter(p => p.signal === '+').length, 8);
-  assert.equal(MODULE_TYPES.DQ.ports.filter(p => p.signal === '0V').length, 1);
+  assert.equal(MODULE_TYPES.DQ.ports.filter(p => p.signal === '0V').length, 8);
   for (const type of ['AQ', 'EX_AI']) {
     assert.equal(MODULE_TYPES[type].ports.length, 4);
     for (let ch = 0; ch < 2; ch++) {

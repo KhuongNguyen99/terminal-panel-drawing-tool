@@ -6,7 +6,7 @@ The SVGs contain transparent exteriors and retain enclosed white indicator windo
 
 | Template | Source | Port interpretation |
 |---|---|---|
-| DQ | `image(20261031-181833).png` | Left CH0+, CH2+, CH4+, CH6+; right CH1+, CH3+, CH5+, CH7+. One shared `0V common` connection represents the reference's common section; it is not an inferred per-channel terminal assignment. |
+| DQ | `image(20261031-181833).png` | Left CH0+, CH2+, CH4+, CH6+; right CH1+, CH3+, CH5+, CH7+. Per the user's editor request, the next four terminal rows expose eight separate connection points, each labeled `0V`. They are identified by side and row rather than assigned to output-channel numbers. |
 | AI RTD | `image(20261031-181934).png` | Left channels 0/1 and right channels 2/3. Within each side: M+, M+, M−, M−, I+, I+, I−, I−. |
 | AQ | `image(20261031-181959).png` | Left CH0+, CH0−; right CH1+, CH1−. |
 | Ex-AI | `image(20261031-193634).png` | Left CH0−, CH0+; right CH1−, CH1+. Additional unannotated physical contacts are intentionally not assigned. |
@@ -15,6 +15,8 @@ The SVGs contain transparent exteriors and retain enclosed white indicator windo
 Module nodes are 360 × 500 editor units. The connection points sit outside the channel labels at x=60 on the left and x=300 on the right, bringing the labels toward the module body. `port.y` uses a 10-unit grid (with 20-unit spacing for the eight-row groups), while `port.pinY` records the actual image contact row for the internal label-to-module arrow. `body.terminalLeft` and `body.terminalRight` identify the centers of the circular terminals. Red callout arrows use 3.5-unit shafts, begin eight units beside the rendered channel text, and end at these centers; their heads follow the shaft angle. The same geometry and SVG artwork are used for the editor and transparent PNG export.
 
 Both SVGs and reference PNGs contain only the hardware body, not the live channel callouts, so exported canvas backgrounds remain transparent. SVG intrinsic dimensions are four times the source crop dimensions, while their viewBoxes retain the original coordinates; their vector content also scales beyond those dimensions.
+
+DQ 0V arrows target the existing circles at source x=45/64 and y=387/406/425/444. Their outer connection dots sit at editor y=390/410/430/450, with four on each side. The final artwork row at source y=463 is unchanged. The left third 0V point retains the stored ID `common-0v` and its original outer coordinate so previously saved connections and wire routes stay attached; the displayed label is `0V`.
 
 ## Model markings checked against manufacturer references
 

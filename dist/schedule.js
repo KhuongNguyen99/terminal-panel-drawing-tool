@@ -103,8 +103,8 @@ export function createScheduleProject() {
         assignment: { moduleId: s.id, channel: c.channel, tag: c.tag, statusTag: c.statusTag, pinType: c.pinType },
       };
       nodes.push(device);
-      // RTD conductor-to-terminal colors and DQ common returns are not specified
-      // by the source, so those leads stay available for manual wiring.
+      // RTD conductor colors and the choice of DQ return terminal are not
+      // specified by the source, so those leads stay available for manual wiring.
       const connections = rtd ? [] : s.type === 'DQ' ? [['white', '+']] : [['black', '-'], ['white', '+']];
       for (const [key, signal] of connections) {
         const port = template.ports.find(p => p.channel === c.channel && p.signal === signal);

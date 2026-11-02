@@ -132,25 +132,47 @@
   </div>
 
   <input type="file" id="project-file" accept="application/json,.json" hidden>
-  <dialog id="export-dialog" class="modal">
-    <div class="modal-heading"><div><span class="eyebrow">SHARE YOUR DIAGRAM</span><h2>Export PNG</h2></div><button class="icon-button" data-action="cancel-export" aria-label="Close export dialog"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <dialog id="export-dialog" class="modal" aria-labelledby="export-heading">
+    <div class="modal-heading"><div><span class="eyebrow">SHARE YOUR DIAGRAM</span><h2 id="export-heading">Export PNG</h2></div><button class="icon-button" data-action="cancel-export" aria-label="Close export dialog"><svg class="icon"><use href="#i-close"/></svg></button></div>
     <p class="modal-description">A clean image of your components and connections, without the editor or grid.</p>
-    <div class="export-preview"><span class="preview-chip"><svg class="icon"><use href="#i-export"/></svg><span id="export-background-label">Transparent background</span></span></div>
-    <fieldset class="export-modes">
-      <legend>Export mode</legend>
-      <div class="export-option is-active" id="export-single-option">
-        <label class="export-choice"><input type="radio" name="export-mode" id="export-mode-single" value="single" checked><span><strong>Single PNG</strong><small>One module or the entire canvas.</small></span></label>
-        <label class="field" id="single-export-options"><span>Module or canvas</span><select id="export-scope"><option value="all">Entire canvas</option></select></label>
+    <div class="export-layout">
+      <div class="export-settings">
+        <fieldset class="export-modes">
+          <legend>Export mode</legend>
+          <div class="export-option is-active" id="export-single-option">
+            <label class="export-choice"><input type="radio" name="export-mode" id="export-mode-single" value="single" checked><span><strong>Single PNG</strong><small>One module or the entire canvas.</small></span></label>
+            <label class="field" id="single-export-options"><span>Module or canvas</span><select id="export-scope"><option value="all">Entire canvas</option></select></label>
+          </div>
+          <div class="export-option" id="export-zip-option">
+            <label class="export-choice"><input type="radio" name="export-mode" id="export-mode-zip" value="zip"><span><strong>All modules as ZIP</strong><small id="export-zip-description">A separate PNG for every module.</small></span></label>
+          </div>
+        </fieldset>
+        <div class="form-row"><label class="field"><span>Resolution</span><select id="export-scale"><option value="1">1× — Standard</option><option value="2" selected>2× — High resolution</option><option value="3">3× — Extra sharp</option><option value="4">4× — Print quality</option></select></label><label class="field"><span>Padding</span><span class="input-with-unit"><input type="number" id="export-margin" min="0" max="200" step="10" value="40"><span>px</span></span></label></div>
+        <label class="check-row"><input type="checkbox" id="export-transparent" checked><span><strong>Transparent background</strong><small>Place your diagram into any document.</small></span></label>
+        <label class="check-row"><input type="checkbox" id="export-title"><span><strong>Include title</strong><small>Add the project or module name above each image.</small></span></label>
+        <div id="export-info" class="export-info" aria-live="polite"></div>
+        <progress id="export-progress" aria-label="PNG export progress" value="0" max="1" hidden></progress>
       </div>
-      <div class="export-option" id="export-zip-option">
-        <label class="export-choice"><input type="radio" name="export-mode" id="export-mode-zip" value="zip"><span><strong>All modules as ZIP</strong><small id="export-zip-description">A separate PNG for every module.</small></span></label>
-      </div>
-    </fieldset>
-    <div class="form-row"><label class="field"><span>Resolution</span><select id="export-scale"><option value="1">1× — Standard</option><option value="2" selected>2× — High resolution</option><option value="3">3× — Extra sharp</option><option value="4">4× — Print quality</option></select></label><label class="field"><span>Padding</span><span class="input-with-unit"><input type="number" id="export-margin" min="0" max="200" step="10" value="40"><span>px</span></span></label></div>
-    <label class="check-row"><input type="checkbox" id="export-transparent" checked><span><strong>Transparent background</strong><small>Place your diagram into any document.</small></span></label>
-    <label class="check-row"><input type="checkbox" id="export-title"><span><strong>Include title</strong><small>Add the project or module name above each image.</small></span></label>
-    <div id="export-info" class="export-info" aria-live="polite"></div>
-    <progress id="export-progress" aria-label="PNG export progress" value="0" max="1" hidden></progress>
+      <section id="export-preview-panel" class="export-preview-panel" aria-labelledby="export-preview-heading">
+        <div class="export-preview-toolbar">
+          <div class="export-preview-heading"><h3 id="export-preview-heading">Preview</h3><p id="export-preview-title">Selected module</p></div>
+          <div class="export-preview-zoom" role="group" aria-label="Preview zoom">
+            <button type="button" data-action="preview-zoom-out" aria-label="Zoom out preview" title="Zoom out preview">−</button>
+            <span id="export-preview-zoom-value" aria-live="polite">Fit</span>
+            <button type="button" data-action="preview-zoom-in" aria-label="Zoom in preview" title="Zoom in preview">+</button>
+            <button type="button" data-action="preview-fit" aria-label="Fit preview" class="preview-fit-button">Fit</button>
+          </div>
+        </div>
+        <div id="export-preview-viewport" class="export-preview-viewport" aria-label="Export image preview" aria-busy="true" tabindex="0">
+          <div id="export-preview-art" hidden></div>
+          <p id="export-preview-message" role="status">Loading preview…</p>
+        </div>
+        <div class="export-preview-footer">
+          <span class="preview-chip"><span id="export-background-label">Transparent background</span></span>
+          <span id="export-preview-size" aria-live="polite"></span>
+        </div>
+      </section>
+    </div>
     <div class="modal-actions"><button class="button" data-action="cancel-export">Cancel</button><button class="button primary" data-action="confirm-export"><svg class="icon"><use href="#i-export"/></svg><span id="export-button-label">Download PNG</span></button></div>
   </dialog>
 

@@ -156,3 +156,34 @@ button.channel-row:hover{border-color:#8db8aa;background:#f0f7f3}
 .stage.is-connecting .wire-label-node{cursor:crosshair}
 #export-progress{display:block;width:100%;height:6px;margin-top:12px;accent-color:var(--teal)}
 .export-modes{border:0;padding:0;margin:0 0 18px;display:flex;flex-direction:column;gap:10px}.export-modes legend{padding:0;margin-bottom:9px;font-size:11px;font-weight:600;color:var(--ink)}.export-option{border:1px solid #e1e8e3;border-radius:9px;padding:12px}.export-option.is-active{border-color:#14958a;background:#f4fbf8}.export-choice{display:flex;align-items:flex-start;gap:10px;cursor:pointer}.export-choice input{width:15px;height:15px;margin:1px 0 0;accent-color:var(--teal);flex:none}.export-choice strong{display:block;font-size:12px;font-weight:650}.export-choice small{display:block;font-size:11px;line-height:17px;color:#7f9188;margin-top:4px}.export-option .field{margin:12px 0 0 25px}.export-option:has(input:disabled){opacity:.65}
+/* Live export preview shares the downloaded image's SVG layout. */
+#export-dialog{width:min(1080px,calc(100vw - 40px))}
+.export-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;align-items:start}
+.export-settings{min-width:0}
+.export-preview-panel{min-width:0;border:1px solid #e1e8e3;border-radius:10px;overflow:hidden;background:#fafcfb}
+.export-preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #e1e8e3;background:#fff}
+.export-preview-heading{min-width:0}
+.export-preview-heading h3{font-size:12px;font-weight:650;margin:0;color:var(--ink)}
+.export-preview-heading p{font-size:10px;line-height:16px;color:#7e9187;margin:3px 0 0;overflow-wrap:anywhere}
+.export-preview-zoom{display:flex;align-items:center;gap:3px;flex:none}
+.export-preview-zoom button{width:27px;height:28px;padding:0;border:1px solid #dce5df;border-radius:5px;color:#557568;background:#fff;font:inherit;font-size:17px;line-height:1;cursor:pointer}
+.export-preview-zoom button:hover:not(:disabled){background:#edf7f2;border-color:#aacdbd;color:var(--teal)}
+.export-preview-zoom button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.export-preview-zoom button:disabled{opacity:.4;cursor:default}
+.export-preview-zoom .preview-fit-button{width:auto;padding:0 8px;margin-left:5px;font-size:10px;font-weight:600}
+#export-preview-zoom-value{min-width:34px;text-align:center;font-size:10px;color:#7e9187;font-variant-numeric:tabular-nums}
+.export-preview-viewport{position:relative;height:clamp(380px,55vh,520px);overflow:auto;overscroll-behavior:contain;background:repeating-conic-gradient(#edf1ee 0% 25%,#fff 0% 50%) 0 0/18px 18px}
+.export-preview-viewport.is-opaque{background:#fff}
+.export-preview-viewport:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}
+#export-preview-art{width:100%;height:100%;pointer-events:none;user-select:none}
+#export-preview-art>svg{display:block;width:100%;height:100%;max-width:none;max-height:none}
+#export-preview-message{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:36px;color:#7f9388;text-align:center;font-size:12px;line-height:20px;overflow-wrap:anywhere;background:#f7faf7ee}
+.export-preview-viewport[data-state="error"] #export-preview-message{color:#9a594d;background:#fff9f5f2}
+.export-preview-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid #e1e8e3;background:#fff}
+.export-preview-footer .preview-chip{padding:4px 7px;font-size:9px;box-shadow:none}
+#export-preview-size{font-size:10px;line-height:16px;color:#7e9187;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+#export-dialog.is-batch{width:min(440px,calc(100vw - 32px))}
+#export-dialog.is-batch .export-layout{display:block}
+#export-dialog.is-batch .export-preview-panel{display:none}
+@media(max-width:800px){#export-dialog{width:calc(100vw - 32px)}.export-layout{grid-template-columns:minmax(0,1fr);gap:20px}.export-preview-viewport{height:390px}}
+@media(max-width:480px){#export-dialog{padding:18px}.export-preview-toolbar{align-items:flex-start;flex-direction:column;gap:10px}.export-preview-viewport{height:340px}.export-preview-footer{align-items:flex-start;flex-direction:column}.export-preview-footer #export-preview-size{text-align:left}}

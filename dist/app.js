@@ -21,6 +21,7 @@ let view = { x: 0, y: 0, zoom: .75 }, geo = { ports: {}, obstacles: [] }, routin
 let gesture = null, pendingPort = null, pointer = null, snapTarget = null, routeFrame = 0, autosaveTimer = 0;
 let undoStack = [], redoStack = [], toastTimer = 0, fitOnce = true, exportEpoch = 0, textEdit = null;
 let exportBusy = false;
+let exportPreviewEpoch = 0, exportPreviewTimer = 0, exportPreviewZoom = 1;
 let labelClipboard = null, clipboardLocalOnly = false, clipboardReadPending = false;
 const imageCache = new Map();
 
@@ -1217,10 +1218,17 @@ $('#project-file').addEventListener('change', async event => {
 });
 async function imageData(type) {
   if (imageCache.has(type)) return imageCache.get(type);
-  const response = await fetch(MODULE_TYPES[type].image); if (!response.ok) throw new Error('A module image could not be loaded. Please refresh and try again.');
-  const blob = await response.blob();
-  const result = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(blob); });
-  imageCache.set(type, result); return result;
+  const pending = (async () => {
+    const response = await fetch(MODULE_TYPES[type].image); if (!response.ok) throw new Error('A module image could not be loaded. Please refresh and try again.');
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(new Error('A module image could not be read. Please try again.')); r.readAsDataURL(blob); });
+  })();
+  imageCache.set(type, pending);
+  try { return await pending; }
+  catch (error) { if (imageCache.get(type) === pending) imageCache.delete(type); throw error; }
+}
+function pngExportOptions() {
+  return { transparent: $('#export-transparent').checked, title: $('#export-title').checked, margin: Math.max(0, Math.min(200, Number($('#export-margin').value) || 0)), scale: Number($('#export-scale').value) || 2 };
 }
 function updateExportDialog() {
   if (exportBusy) return;
@@ -1230,6 +1238,8 @@ function updateExportDialog() {
   $('#export-zip-description').textContent = count ? `${count} module PNG${count === 1 ? '' : 's'} in one download.` : 'Add a module to use ZIP export.';
   $('#export-single-option').classList.toggle('is-active', !batch);
   $('#export-zip-option').classList.toggle('is-active', batch);
+  $('#export-dialog').classList.toggle('is-batch', batch);
+  $('#export-preview-panel').hidden = batch;
   $('#single-export-options').hidden = batch;
   $('#export-scope').disabled = batch;
   $('#export-button-label').textContent = batch ? 'Download ZIP' : 'Download PNG';
@@ -1241,6 +1251,7 @@ function updateExportDialog() {
 }
 function setExportBusy(busy) {
   exportBusy = busy;
+  if (busy) invalidateExportPreview();
   $('#export-dialog').setAttribute('aria-busy', String(busy));
   $('#export-dialog').querySelectorAll('input, select').forEach(el => { el.disabled = busy; });
   $('[data-action="confirm-export"]').disabled = busy;
@@ -1249,8 +1260,76 @@ function setExportBusy(busy) {
 }
 function cancelExport() {
   exportEpoch++;
-  setExportBusy(false);
   $('#export-dialog').close();
+  invalidateExportPreview();
+  setExportBusy(false);
+}
+function invalidateExportPreview() {
+  exportPreviewEpoch++;
+  clearTimeout(exportPreviewTimer);
+}
+function clearExportPreview() {
+  const art = $('#export-preview-art');
+  art.replaceChildren(); art.hidden = true;
+  $('#export-preview-size').textContent = '';
+  const viewport = $('#export-preview-viewport');
+  viewport.dataset.state = 'empty'; delete viewport.dataset.preview;
+  viewport.setAttribute('aria-busy', 'false');
+}
+function setExportPreviewZoom(value) {
+  const viewport = $('#export-preview-viewport'), art = $('#export-preview-art');
+  const previous = exportPreviewZoom;
+  exportPreviewZoom = Math.max(1, Math.min(4, value));
+  const left = viewport.scrollLeft, top = viewport.scrollTop;
+  art.style.width = `${exportPreviewZoom * 100}%`; art.style.height = `${exportPreviewZoom * 100}%`;
+  viewport.scrollLeft = exportPreviewZoom === 1 ? 0 : (left + viewport.clientWidth / 2) * exportPreviewZoom / previous - viewport.clientWidth / 2;
+  viewport.scrollTop = exportPreviewZoom === 1 ? 0 : (top + viewport.clientHeight / 2) * exportPreviewZoom / previous - viewport.clientHeight / 2;
+  $('#export-preview-zoom-value').textContent = exportPreviewZoom === 1 ? 'Fit' : `${exportPreviewZoom}×`;
+  const ready = viewport.dataset.state === 'ready';
+  $('[data-action="preview-zoom-out"]').disabled = !ready || exportPreviewZoom === 1;
+  $('[data-action="preview-zoom-in"]').disabled = !ready || exportPreviewZoom === 4;
+  $('[data-action="preview-fit"]').disabled = !ready || exportPreviewZoom === 1;
+}
+function queueExportPreview(delay = 0) {
+  invalidateExportPreview();
+  if (!$('#export-dialog').open || exportBusy) return;
+  clearExportPreview();
+  if ($('#export-mode-zip').checked) return;
+  const epoch = exportPreviewEpoch, scope = $('#export-scope').value, options = pngExportOptions();
+  const viewport = $('#export-preview-viewport'), message = $('#export-preview-message');
+  $('#export-preview-title').textContent = scope === 'all' ? 'Entire canvas' : moduleCaption(nodeById(scope), true);
+  viewport.classList.toggle('is-opaque', !options.transparent);
+  viewport.dataset.state = 'loading'; viewport.setAttribute('aria-busy', 'true');
+  message.textContent = 'Loading preview…'; message.hidden = false;
+  setExportPreviewZoom(1);
+  exportPreviewTimer = setTimeout(async () => {
+    const isCurrent = () => epoch === exportPreviewEpoch && $('#export-dialog').open && !exportBusy && !$('#export-mode-zip').checked;
+    try {
+      const plan = pngExportPlan(scope), embedded = {};
+      const types = new Set(plan.nodes.filter(n => n.kind === 'module').map(n => n.type));
+      await Promise.all([...types].map(async type => { embedded[type] = await imageData(type); }));
+      if (!isCurrent()) return;
+      const { svg, width, height } = svgForExport(plan, options, embedded);
+      const art = $('#export-preview-art'); art.innerHTML = svg;
+      art.firstElementChild.setAttribute('role', 'img');
+      art.firstElementChild.setAttribute('aria-label', `Export preview of ${plan.title}`);
+      art.hidden = false; message.hidden = true;
+      viewport.dataset.state = 'ready';
+      viewport.dataset.preview = JSON.stringify({ scope, width, height, ...options, nodes: plan.nodes.length, wires: plan.wires.length });
+      $('#export-preview-size').textContent = `${width.toLocaleString()} × ${height.toLocaleString()} px`;
+      setExportPreviewZoom(1);
+    } catch (error) {
+      if (!isCurrent()) return;
+      viewport.dataset.state = 'error';
+      message.textContent = error.message || 'The preview could not be loaded. Choose a module or change an option to try again.';
+      message.hidden = false;
+      $('#export-preview-size').textContent = 'Preview unavailable';
+    } finally { if (isCurrent()) viewport.setAttribute('aria-busy', 'false'); }
+  }, delay);
+}
+function exportOptionsChanged(event) {
+  updateExportDialog();
+  queueExportPreview(event.target.id === 'export-margin' ? 150 : 0);
 }
 function pngExportPlan(scope) {
   const nodes = scope === 'all' ? project.nodes : focusNodesForModule(scope, project);
@@ -1262,8 +1341,8 @@ function pngExportPlan(scope) {
   if (blocked) throw new Error(`${title}: ${blocked} wire${blocked === 1 ? ' has' : 's have'} no clear route. Move items apart before exporting.`);
   return { scope, nodes, wires, title, bounds: boundsOf(nodes, MODULE_TYPES, routesForNodes(nodes)) };
 }
-async function renderPNG(plan, options, embedded, assertCurrent) {
-  const { nodes, wires, title: exportTitle, bounds: b, scope } = plan;
+function svgForExport(plan, options, embedded) {
+  const { nodes, wires, title: exportTitle, bounds: b } = plan;
   const { transparent, title, margin, scale } = options, titleHeight = title ? 42 : 0;
   const width = Math.ceil(b.width + 2 * margin), height = Math.ceil(b.height + 2 * margin + titleHeight);
   const actualScale = Math.min(scale, 12000 / width, 12000 / height, Math.sqrt(48000000 / (width * height)));
@@ -1271,12 +1350,17 @@ async function renderPNG(plan, options, embedded, assertCurrent) {
   const visibleWireIds = new Set(wires.map(w => w.id));
   const content = wires.map(w => wireMarkup(w, true, visibleWireIds)).join('') + nodes.map(n => nodeMarkup(n, true, embedded)).join('');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(width * actualScale)}" height="${Math.ceil(height * actualScale)}" viewBox="${x} ${y} ${width} ${height}" font-family="Arial, Helvetica, sans-serif">${transparent ? '' : `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#ffffff"/>`}${title ? `<text x="${b.x}" y="${b.y - 20}" font-size="22" font-weight="700" fill="#20303d">${esc(exportTitle)}</text>` : ''}${content}</svg>`;
+  return { svg, width: Math.ceil(width * actualScale), height: Math.ceil(height * actualScale) };
+}
+async function renderPNG(plan, options, embedded, assertCurrent) {
+  const { nodes, wires, scope } = plan;
+  const { svg, width, height } = svgForExport(plan, options, embedded);
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   let image;
   try { image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error('Could not render the export. Try a smaller scale.')); img.src = svgUrl; }); }
   finally { URL.revokeObjectURL(svgUrl); }
   assertCurrent();
-  const output = document.createElement('canvas'); output.width = Math.ceil(width * actualScale); output.height = Math.ceil(height * actualScale);
+  const output = document.createElement('canvas'); output.width = width; output.height = height;
   try {
     const ctx = output.getContext('2d');
     if (!ctx) throw new Error('Could not create the image. Try a smaller scale.');
@@ -1284,7 +1368,7 @@ async function renderPNG(plan, options, embedded, assertCurrent) {
     const blob = await new Promise(resolve => output.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('The image is too large. Choose a smaller scale.');
     assertCurrent();
-    const metadata = { width: output.width, height: output.height, transparent, cornerAlpha: ctx.getImageData(0, 0, 1, 1).data[3], bytes: blob.size, scope, modules: nodes.filter(n => n.kind === 'module').length, devices: nodes.filter(n => n.kind === 'device').length, wireLabels: nodes.filter(n => n.kind === 'wire-label').length, tags: nodes.filter(n => n.kind === 'tag').length, wires: wires.length };
+    const metadata = { width: output.width, height: output.height, transparent: options.transparent, cornerAlpha: ctx.getImageData(0, 0, 1, 1).data[3], bytes: blob.size, scope, modules: nodes.filter(n => n.kind === 'module').length, devices: nodes.filter(n => n.kind === 'device').length, wireLabels: nodes.filter(n => n.kind === 'wire-label').length, tags: nodes.filter(n => n.kind === 'tag').length, wires: wires.length };
     return { blob, metadata };
   } finally { output.width = 0; output.height = 0; }
 }
@@ -1294,7 +1378,7 @@ async function exportPNG() {
   const epoch = ++exportEpoch, batch = $('#export-mode-zip').checked, scope = batch ? 'modules-zip' : $('#export-scope').value;
   const isCurrent = () => epoch === exportEpoch && $('#export-dialog').open;
   const assertCurrent = () => { if (!isCurrent()) throw new DOMException('Export cancelled', 'AbortError'); };
-  const options = { transparent: $('#export-transparent').checked, title: $('#export-title').checked, margin: Math.max(0, Math.min(200, Number($('#export-margin').value) || 0)), scale: Number($('#export-scale').value) || 2 };
+  const options = pngExportOptions();
   const progress = $('#export-progress'); progress.value = 0;
   let errorMessage = '';
   setExportBusy(true); $('#export-button-label').textContent = 'Preparing PNG…';
@@ -1339,7 +1423,7 @@ async function exportPNG() {
   } catch (error) {
     if (isCurrent()) { errorMessage = error.message || 'Export failed. Try again at a smaller scale.'; notify(errorMessage, true); }
   } finally {
-    if (epoch === exportEpoch) { setExportBusy(false); if (errorMessage) $('#export-info').textContent = errorMessage; }
+    if (epoch === exportEpoch) { setExportBusy(false); if (errorMessage) $('#export-info').textContent = errorMessage; queueExportPreview(); }
   }
 }
 
@@ -1365,6 +1449,9 @@ const actions = {
     initialView();
   },
   'schedule-notes': () => $('#schedule-dialog').showModal(), 'close-schedule-notes': () => $('#schedule-dialog').close(),
+  'preview-zoom-in': () => setExportPreviewZoom(exportPreviewZoom + .5),
+  'preview-zoom-out': () => setExportPreviewZoom(exportPreviewZoom - .5),
+  'preview-fit': () => setExportPreviewZoom(1),
   example: () => { if (project.nodes.length && !confirm('Load the complete Slot 5 example? You can undo this or save your current project first.')) return; change(() => { project = exampleProject(true); clearSelection(); }, 'Slot 5 example loaded'); fitBoard(); },
   clear: () => { if (project.nodes.length && !confirm('Start a blank project? You can undo this or save your current project first.')) return; change(() => { project = { ...exampleProject(false), title: 'Untitled wiring', nodes: [], wires: [] }; clearSelection(); }, 'Blank project ready'); fitBoard(); },
   'export-png': () => {
@@ -1376,13 +1463,16 @@ const actions = {
     $('#export-mode-single').checked = true;
     setExportBusy(false);
     $('#export-dialog').showModal();
+    computeRoutes({ preserveRoutes: true });
+    queueExportPreview();
   },
   'confirm-export': exportPNG, 'cancel-export': cancelExport, help: () => $('#help-dialog').showModal(), 'close-help': () => $('#help-dialog').close()
 };
 $('#export-dialog').addEventListener('cancel', event => { event.preventDefault(); cancelExport(); });
-$('#export-scope').addEventListener('change', updateExportDialog);
-$('#export-transparent').addEventListener('change', updateExportDialog);
-document.querySelectorAll('[name="export-mode"]').forEach(input => input.addEventListener('change', updateExportDialog));
+$('#export-dialog').addEventListener('close', () => { if (!$('#export-dialog').open) { invalidateExportPreview(); clearExportPreview(); } });
+['export-scope', 'export-transparent', 'export-title', 'export-scale'].forEach(id => $('#' + id).addEventListener('change', exportOptionsChanged));
+$('#export-margin').addEventListener('input', exportOptionsChanged);
+document.querySelectorAll('[name="export-mode"]').forEach(input => input.addEventListener('change', exportOptionsChanged));
 document.addEventListener('click', event => {
   const tag = event.target.closest('[data-jump-tag]'); if (tag) return jumpToNode(tag.dataset.jumpTag);
   const focus = event.target.closest('[data-focus-module]'); if (focus) return focusModule(focus.dataset.focusModule);

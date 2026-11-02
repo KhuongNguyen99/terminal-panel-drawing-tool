@@ -155,10 +155,10 @@ export const MODULE_TYPES = Object.freeze({
   DIN_RESISTOR: template('DIN_RESISTOR', 'DIN Resistor Rail Terminal Block', '', 'assets/module-din-resistor.png', dinBody, dinPorts,
     'Each connection point represents both holes at that end of a terminal. Name the top and bottom rows independently; connectors are numbered 1–10 from left to right.', {
       width: 640, height: 650, connectorRole: 'terminal',
-      header: Object.freeze({ x: 12, y: -100, width: 616, height: 32 }),
+      header: Object.freeze({ x: 12, y: -168, width: 616, height: 32 }),
       routingObstacles: Object.freeze([
         Object.freeze({ x: 12, y: 0, width: 616, height: 650 }),
-        Object.freeze({ x: 12, y: -100, width: 616, height: 32, avoidPortEscape: true }),
+        Object.freeze({ x: 12, y: -168, width: 616, height: 32, avoidPortEscape: true }),
       ]),
       imageAlt: 'Ten upright DIN resistor rail terminals, matching the approved flat-color artwork',
     }),

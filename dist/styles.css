@@ -132,3 +132,13 @@ button.channel-row:hover{border-color:#8db8aa;background:#f0f7f3}
 @media(max-height:760px){.tags-section{padding-top:15px;padding-bottom:15px}.connector-tag-button{margin-top:10px;min-height:47px;padding-top:6px;padding-bottom:6px}.tag-thumb{height:31px}.tag-list{max-height:150px}}
 @media(max-width:1000px){.connector-tag-button{gap:7px;padding:7px}.tag-thumb{width:26px}.connector-tag-button .add-icon{width:12px;height:12px}.connector-tag-button strong{font-size:10px}.connector-tag-button small{font-size:8px}}
 @media(max-width:570px){.connector-tag-button{gap:6px;padding:7px 5px;min-height:45px}.connector-tag-button small{display:none}.connector-tag-button .add-icon{display:none}.tag-thumb{height:28px;width:25px}.tag-thumb .icon{width:19px}.connector-tag-button strong{font-size:10px;line-height:14px}.tag-list>button,.tag-list-item{padding:7px 3px;gap:6px}.tag-list strong{font-size:9px}.tag-list small{font-size:8px;line-height:13px}.tags-section{padding-top:15px;padding-bottom:15px}}
+
+/* Keep label/tag clipboard controls visible without crowding the project bar. */
+.clipboard-actions{display:flex;align-items:center;gap:2px;flex:none;padding-right:10px;margin-right:1px;border-right:1px solid var(--line)}
+.top-actions .clipboard-button{min-height:32px;padding:6px 8px;font-size:11px;line-height:18px;gap:5px}
+.clipboard-button .icon{width:15px;height:15px}
+.clipboard-button:disabled{opacity:.38}
+@media(max-width:1280px) and (min-width:1201px){.top-actions{gap:5px}.clipboard-actions{padding-right:7px}.top-actions .clipboard-button{padding-left:7px;padding-right:7px}}
+@media(max-width:1200px){.clipboard-actions{padding-right:6px}.top-actions .clipboard-button{width:32px;padding:6px}.top-actions .clipboard-button>span{display:none}}
+@media(max-width:570px){.clipboard-actions{gap:1px;padding-right:4px;margin-right:1px}.top-actions .clipboard-button{width:28px;min-height:30px;padding:5px}}
+@media(max-width:460px){.topbar .brand>span:last-child{display:none}.topbar .brand{gap:0;min-width:28px}}

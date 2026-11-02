@@ -4,6 +4,7 @@ import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from './schedul
 import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigation.js';
 import { captureManualRoute, moveWireSegment } from './manual-routing.js';
 import { findConnectorTagPosition, replaceWireWithTags } from './connector-tag-actions.js';
+import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, labelClipboardBounds, prepareLabelPaste } from './label-clipboard.js';
 import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT, tagWidth, tagHeight, tagName, tagNameKey, matchingTags, nextTagName, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
 const $ = selector => document.querySelector(selector);
@@ -17,6 +18,7 @@ let renderingInspector = false;
 let view = { x: 0, y: 0, zoom: .75 }, geo = { ports: {}, obstacles: [] }, routing = { routes: {}, diagnostics: {} };
 let gesture = null, pendingPort = null, pointer = null, snapTarget = null, routeFrame = 0, autosaveTimer = 0;
 let undoStack = [], redoStack = [], toastTimer = 0, fitOnce = true, exportEpoch = 0, textEdit = null;
+let labelClipboard = null, clipboardLocalOnly = false, clipboardReadPending = false;
 const imageCache = new Map();
 
 function newDevice(wireCount = 2, extra = {}) {
@@ -532,6 +534,8 @@ function syncControls() {
   $('#grid-size').value = String(project.settings.grid);
   $('[data-action="undo"]').disabled = !undoStack.length;
   $('[data-action="redo"]').disabled = !redoStack.length;
+  $('#copy-button').disabled = !project.nodes.some(n => selected.has(n.id) && resizableLabel(n));
+  $('#paste-button').disabled = clipboardReadPending;
   $('[data-action="select-tool"]').classList.toggle('active', tool === 'select');
   $('[data-action="select-tool"]').setAttribute('aria-pressed', String(tool === 'select'));
   $('[data-action="pan-tool"]').classList.toggle('active', tool === 'pan');
@@ -916,6 +920,109 @@ function duplicateSelection() {
   if (copy.length === 1 && copy[0].kind === 'tag') return addTag(copy[0].name, copy[0].wireSide, { width: tagWidth(copy[0]), height: tagHeight(copy[0]) });
   change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
 }
+
+const LABEL_CLIPBOARD_MIME = 'application/x-wirebench-labels+json';
+function isEditingTarget(target) {
+  return !!target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+}
+function clipboardBlocked(event = null) {
+  return !!gesture || !!$('dialog[open]') || (event && (isEditingTarget(event.target) || isEditingTarget(document.activeElement)));
+}
+function clipboardDescription(fragment) {
+  const count = fragment.nodes.length;
+  const kind = fragment.nodes.every(n => n.kind === 'tag') ? 'tag' : fragment.nodes.every(n => n.kind === 'device') ? 'device label' : 'label and tag';
+  return kind === 'label and tag' ? `${count} labels and tags` : `${count} ${kind}${count === 1 ? '' : 's'}`;
+}
+function captureLabelSelection() {
+  commitTextEdit();
+  const fragment = createLabelClipboard(project.nodes, selected);
+  if (fragment) labelClipboard = fragment;
+  return fragment;
+}
+async function copyLabels() {
+  if (clipboardBlocked()) return;
+  const fragment = captureLabelSelection();
+  if (!fragment) return notify('Select a device label or connector tag to copy.');
+  // Keep an in-app copy for browsers that do not expose the system clipboard.
+  clipboardLocalOnly = true;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(serializeLabelClipboard(fragment));
+      if (labelClipboard === fragment) clipboardLocalOnly = false;
+    }
+  } catch { /* The Paste button can still use the in-app copy. */ }
+  if (labelClipboard === fragment) notify(`Copied ${clipboardDescription(fragment)}${clipboardLocalOnly ? ' · use the Paste button' : ' · Ctrl/Cmd+V to paste'}`);
+}
+function pasteLabels(fragment) {
+  if (clipboardBlocked()) return;
+  commitTextEdit();
+  try {
+    const source = labelClipboardBounds(fragment), center = viewportCenter();
+    const visible = source.x + source.width > view.x && source.y + source.height > view.y
+      && source.x < view.x + stage.clientWidth / view.zoom && source.y < view.y + stage.clientHeight / view.zoom;
+    const desired = visible ? { x: source.x + 40, y: source.y + 40 }
+      : { x: center.x - source.width / 2, y: center.y - source.height / 2 };
+    const result = prepareLabelPaste(project, fragment, MODULE_TYPES, { desired, routes: routing.routes });
+    // New labels have free ports, so refresh geometry without rerouting any wires.
+    change(() => {
+      project.nodes.push(...result.nodes); clearSelection();
+      selected = new Set(result.nodes.map(n => n.id));
+      focusedModuleId = ''; tool = 'select';
+    }, `Pasted ${clipboardDescription(fragment)} · drag to position · Undo to remove`, false);
+    const b = result.bounds, margin = 24 / view.zoom;
+    if (b.x < view.x + margin || b.y < view.y + margin || b.x + b.width > view.x + stage.clientWidth / view.zoom - margin || b.y + b.height > view.y + stage.clientHeight / view.zoom - margin) {
+      view.zoom = Math.max(.04, Math.min(view.zoom, stage.clientWidth / (b.width + 80), stage.clientHeight / (b.height + 80)));
+      view.x = b.x + b.width / 2 - stage.clientWidth / (2 * view.zoom);
+      view.y = b.y + b.height / 2 - stage.clientHeight / (2 * view.zoom);
+      syncView();
+    }
+    stage.focus({ preventScroll: true });
+  } catch (error) { notify(error.message || 'Could not paste these labels. Copy them again and try another area.', true); }
+}
+async function pasteFromClipboard() {
+  if (clipboardBlocked() || clipboardReadPending) return;
+  if (clipboardLocalOnly || !navigator.clipboard?.readText) {
+    if (labelClipboard) pasteLabels(labelClipboard);
+    else notify('Copy a device label or tag first, or use Ctrl/Cmd+V to paste from another WireBench tab.');
+    return;
+  }
+  const targetProject = project;
+  clipboardReadPending = true; syncControls();
+  try {
+    const fragment = parseLabelClipboard(await navigator.clipboard.readText());
+    if (project !== targetProject || clipboardBlocked()) return;
+    if (!fragment) return notify('The clipboard has no WireBench labels or tags. Copy a label or tag first.');
+    labelClipboard = fragment; clipboardLocalOnly = false;
+    pasteLabels(fragment);
+  } catch {
+    if (project !== targetProject || clipboardBlocked()) return;
+    if (labelClipboard) pasteLabels(labelClipboard);
+    else notify('Use Ctrl/Cmd+V to paste, or copy a label or tag in this editor first.');
+  } finally { clipboardReadPending = false; syncControls(); }
+}
+
+document.addEventListener('copy', event => {
+  // Leave normal text selection and text-field clipboard behavior to the browser.
+  if (clipboardBlocked(event) || window.getSelection()?.toString()) return;
+  const fragment = captureLabelSelection(); if (!fragment) return;
+  const text = serializeLabelClipboard(fragment);
+  clipboardLocalOnly = true;
+  try {
+    event.clipboardData.setData('text/plain', text);
+    clipboardLocalOnly = false;
+    try { event.clipboardData.setData(LABEL_CLIPBOARD_MIME, text); } catch { /* Plain text carries the same typed payload. */ }
+  } catch { /* The Paste button remains available if clipboard writing is blocked. */ }
+  event.preventDefault();
+  notify(`Copied ${clipboardDescription(fragment)}${clipboardLocalOnly ? ' · use the Paste button' : ' · Ctrl/Cmd+V to paste'}`);
+});
+document.addEventListener('paste', event => {
+  if (clipboardBlocked(event)) return;
+  const text = event.clipboardData?.getData(LABEL_CLIPBOARD_MIME) || event.clipboardData?.getData('text/plain') || '';
+  const fragment = parseLabelClipboard(text); if (!fragment) return;
+  event.preventDefault(); labelClipboard = fragment; clipboardLocalOnly = false;
+  pasteLabels(fragment);
+});
+
 function setNodeProperty(prop, value, element = null) {
   const n = selectedNode(); if (!n) return;
   if (['width', 'height'].includes(prop)) {
@@ -1106,7 +1213,7 @@ const actions = {
   'zoom-in': () => zoomBy(1.2), 'zoom-out': () => zoomBy(1 / 1.2), fit: () => focusModule(''),
   'select-tool': () => { tool = 'select'; syncControls(); }, 'pan-tool': () => { tool = 'pan'; syncControls(); },
   'auto-route': () => rerouteWires(),
-  'cancel-wire': cancelWire, delete: deleteSelection, duplicate: duplicateSelection,
+  'cancel-wire': cancelWire, delete: deleteSelection, duplicate: duplicateSelection, copy: copyLabels, paste: pasteFromClipboard,
   reconnect: () => { const w = project.wires.find(w => w.id === selectedWire); if (w) beginWire(w.from); },
   'flip-device': () => { const n = selectedNode(); if (n?.kind === 'device') change(() => { n.cableSide = n.cableSide === 'left' ? 'right' : 'left'; n.wireSide = n.wireSide === 'left' ? 'right' : 'left'; }); },
   'reset-label-size': () => { const n = selectedNode(); if (resizableLabel(n)) change(() => { delete n.width; delete n.height; }, `Default ${n.kind === 'tag' ? 'tag' : 'label'} size restored`); },
@@ -1144,11 +1251,13 @@ document.addEventListener('click', event => {
   const button = event.target.closest('[data-action]'); if (button && actions[button.dataset.action]) actions[button.dataset.action]();
 });
 document.addEventListener('keydown', event => {
-  const editing = /INPUT|TEXTAREA|SELECT/.test(event.target.tagName) || event.target.isContentEditable;
+  const editing = isEditingTarget(event.target);
   if (gesture?.kind === 'wire-segment') { if (event.key === 'Escape') cancelSegmentMove(); event.preventDefault(); return; }
   if (gesture?.kind === 'resize') { if (event.key === 'Escape') cancelResize(); event.preventDefault(); return; }
   if (event.key === 'Escape') { if (pendingPort) cancelWire(); else { clearSelection(); render(false); } return; }
   if (editing || $('dialog[open]')) return;
+  // Native clipboard events handle diagram copying; do not fall through to V (select).
+  if ((event.ctrlKey || event.metaKey) && ['c', 'v', 'x'].includes(event.key.toLowerCase())) return;
   const wireHandle = event.target.closest('[data-wire-segment]');
   if (wireHandle) {
     selectedSegmentIndex = Number(wireHandle.dataset.wireSegment);

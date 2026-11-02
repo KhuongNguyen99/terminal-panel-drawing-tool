@@ -14,6 +14,8 @@
     <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12" transform="translate(0 -2)"/></symbol>
     <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12" transform="translate(0 -2)"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 4H5v17h14V4h-3M8 11h8M8 15h6"/></symbol>
     <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 15v5h14v-5"/></symbol>
     <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 8V5h7l2 3h9v12H3V8Zm0 3h18"/></symbol>
     <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v11m-4-7 4-4 4 4M5 11v9h14v-9"/></symbol>
@@ -45,6 +47,10 @@
         <div class="history-actions" aria-label="History">
           <button class="icon-button" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="icon"><use href="#i-undo"/></svg></button>
           <button class="icon-button" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="icon"><use href="#i-redo"/></svg></button>
+        </div>
+        <div class="clipboard-actions" role="group" aria-label="Copy and paste labels and tags">
+          <button class="button subtle clipboard-button" type="button" id="copy-button" data-action="copy" title="Copy device labels and tags (Ctrl/Cmd+C)" aria-label="Copy" aria-keyshortcuts="Control+C Meta+C" disabled><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy</span></button>
+          <button class="button subtle clipboard-button" type="button" id="paste-button" data-action="paste" title="Paste device labels and tags (Ctrl/Cmd+V)" aria-label="Paste" aria-keyshortcuts="Control+V Meta+V"><svg class="icon" aria-hidden="true"><use href="#i-paste"/></svg><span>Paste</span></button>
         </div>
         <button class="button subtle" data-action="open-project" title="Open a saved project"><svg class="icon"><use href="#i-open"/></svg><span>Open</span></button>
         <button class="button subtle" data-action="save-project" title="Download the editable project"><svg class="icon"><use href="#i-save"/></svg><span>Save project</span></button>
@@ -149,8 +155,9 @@
   <dialog id="help-dialog" class="modal help-modal">
     <div class="modal-heading"><div><span class="eyebrow">A QUICK TOUR</span><h2>Your wiring workspace</h2></div><button class="icon-button" data-action="close-help" aria-label="Close editor guide"><svg class="icon"><use href="#i-close"/></svg></button></div>
     <div class="help-steps"><div><span>01</span><section><h3>Place your components</h3><p>Add a module or a 2-wire / 4-wire cable label. Drag it anywhere on the grid. Use Properties to edit names, cable numbers, label side, width, and height.</p></section></div><div><span>02</span><section><h3>Make your connections</h3><p>Click a conductor dot on a cable label, then a channel port on a module. You can also drag between ports. A new wire gets an initial path, then stays in place. Moving a component keeps its wires attached.</p></section></div><div><span>03</span><section><h3>Adjust one wire at a time</h3><p>Select a wire, then drag any segment or square handle. Other wire paths stay fixed. Auto-route is off by default. Use Auto-route this wire for one connection, or Auto-route all to replace every path. Turn on Auto-route for live routing while arranging components. Undo restores previous paths.</p></section></div><div><span>04</span><section><h3>Save and share</h3><p>Save project downloads an editable JSON file, including your wire paths and routing preference. Open restores it. Export PNG keeps the same layout with an optional transparent background.</p></section></div></div>
+    <p class="instruction-card"><strong>Copy and paste:</strong> Select a device label or connector tag, or Shift-click several to select a group. Use the Copy and Paste toolbar buttons, or Ctrl/Cmd+C and Ctrl/Cmd+V. Copies keep their names, sizes, colors, and side settings and are ready to wire. Device cable numbers are preserved; tags with matching names remain linked.</p>
     <p class="instruction-card"><strong>Connector tags:</strong> Tags with the same name represent a virtual connection. Wire each tag where you need it, then select a tag and choose a matching tag in Properties to jump to its location.</p>
-    <div class="shortcut-grid"><span>Undo<kbd>Ctrl / ⌘ Z</kbd></span><span>Redo<kbd>Ctrl / ⌘ Shift Z</kbd></span><span>Delete selection<kbd>Delete</kbd></span><span>Pan<kbd>Space + drag</kbd></span><span>Zoom<kbd>Mouse wheel</kbd></span><span>Cancel connection<kbd>Esc</kbd></span></div>
+    <div class="shortcut-grid"><span>Copy labels / tags<kbd>Ctrl / ⌘ C</kbd></span><span>Paste labels / tags<kbd>Ctrl / ⌘ V</kbd></span><span>Select a group<kbd>Shift + click</kbd></span><span>Undo<kbd>Ctrl / ⌘ Z</kbd></span><span>Redo<kbd>Ctrl / ⌘ Shift Z</kbd></span><span>Delete selection<kbd>Delete</kbd></span><span>Pan<kbd>Space + drag</kbd></span><span>Zoom<kbd>Mouse wheel</kbd></span><span>Cancel connection<kbd>Esc</kbd></span></div>
     <div class="modal-actions"><button class="button primary" data-action="close-help">Got it</button></div>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

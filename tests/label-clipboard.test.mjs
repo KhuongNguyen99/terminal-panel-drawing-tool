@@ -9,6 +9,7 @@ const device = (extra = {}) => ({ id: 'device', kind: 'device', name: '*v-3501#-
   wireCount: 4, cableSide: 'right', wireSide: 'left', width: 320, height: 90,
   colors: { red: '#e54b4b', black: '#202631', white: '#eeddcc', green: '#123456' }, ...extra });
 const tag = (extra = {}) => ({ id: 'tag', kind: 'tag', name: 'MOTOR_RUN', x: 500.75, y: 150.5, wireSide: 'top', width: 125, height: 35, ...extra });
+const wireLabel = (extra = {}) => ({ id: 'inline', kind: 'wire-label', name: 'FLOW_RETURN', x: 900.25, y: 100.5, width: 300, height: 80, color: '#2a5f89', ...extra });
 const module = (extra = {}) => ({ id: 'module', kind: 'module', type: 'AI', name: 'AI', rio: 'RIO A', slot: '5', x: 0, y: 0, ...extra });
 const project = (nodes = [], wires = [], settings = {}) => normalizeProject({ version: 1, title: 'Paste destination',
   fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION, nodes, wires, settings: { grid: 10, snap: true, autoRoute: false, ...settings } }, MODULE_TYPES);
@@ -175,4 +176,45 @@ test('paste limits and placement errors are atomic and explain how to recover', 
   freeze(crowded);
   assert.throws(() => prepareLabelPaste(crowded, copied, coverTypes, { desired: { x: 0, y: 0 } }), /Pan to an open area or copy fewer labels/);
   assert.deepEqual(crowded, crowdedBefore);
+});
+
+test('copy and paste preserve name-only wire labels without adding cable metadata or wires', () => {
+  const original = wireLabel({ assignment: { moduleId: 'module', channel: 2 }, scheduleId: 'old-row', cable: '17',
+    wireCount: 4, wireSide: 'top', colors: { green: '#2b9b68' }, extra: 'discard' });
+  const nodes = [device(), original, tag(), module()], before = copy(nodes);
+  freeze(nodes);
+  const copied = createLabelClipboard(nodes, ['device', 'inline', 'tag', 'module']);
+  assert.deepEqual(copied.nodes.map(node => node.kind), ['device', 'wire-label', 'tag']);
+  assert.deepEqual(copied.nodes[1], wireLabel());
+  assert.deepEqual(parseLabelClipboard(serializeLabelClipboard(copied)), copied);
+  assert.equal(Object.hasOwn(copied, 'wires'), false);
+  const pasted = prepareLabelPaste(project(), copied, MODULE_TYPES, { desired: { x: 1000, y: 1000 } });
+  const label = pasted.nodes.find(node => node.kind === 'wire-label');
+  assert.match(label.id, /^label-/);
+  assert.notEqual(label.id, original.id);
+  assert.deepEqual([label.name, label.width, label.height, label.color], ['FLOW_RETURN', 300, 80, '#2a5f89']);
+  for (const key of ['assignment', 'scheduleId', 'cable', 'wireCount', 'wireSide', 'colors', 'extra']) assert.equal(Object.hasOwn(label, key), false);
+  assert.equal(label.x - pasted.nodes[0].x, original.x - nodes[0].x, 'mixed-label groups keep their relative layout');
+  const reopened = project(pasted.nodes);
+  assert.deepEqual(reopened.nodes, pasted.nodes);
+  assert.equal(reopened.wires.length, 0);
+  const ports = geometry(reopened.nodes, MODULE_TYPES).ports;
+  assert.deepEqual(Object.keys(ports).filter(id => id.startsWith(`${label.id}:`)), [`${label.id}:left`, `${label.id}:right`]);
+  assert.deepEqual(nodes, before);
+});
+
+test('wire-label clipboard data uses the model name, color, and size sanitizers', () => {
+  const parsed = parseLabelClipboard(JSON.stringify({ format: 'wirebench-labels', version: 1, nodes: [
+    wireLabel({ name: 'X'.repeat(150), color: 'url(bad)', width: -20, height: 5000, cable: 'omit' }),
+  ] }));
+  assert.ok(parsed);
+  assert.equal(parsed.nodes[0].name.length, 120);
+  assert.deepEqual([parsed.nodes[0].color, parsed.nodes[0].width, parsed.nodes[0].height], ['#202631', 160, 600]);
+  assert.equal(Object.hasOwn(parsed.nodes[0], 'cable'), false);
+  const defaults = fragment([wireLabel({ width: undefined, height: undefined, color: undefined })]);
+  assert.deepEqual(labelClipboardBounds(defaults), { x: 900.25, y: 100.5, width: 210, height: 60 });
+  const copied = fragment([wireLabel({ x: 0, y: 0, width: 400, height: 160 })]);
+  const routes = { existing: { points: [{ x: 300, y: -500 }, { x: 300, y: 500 }] } };
+  const pasted = prepareLabelPaste(project(), copied, MODULE_TYPES, { desired: { x: 0, y: 0 }, routes });
+  assert.ok(separate(body(pasted.nodes[0]), { x: 300, y: -500, width: 0, height: 1000 }, 10), 'the full wire-label footprint clears existing wire geometry');
 });

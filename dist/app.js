@@ -5,6 +5,7 @@ import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigat
 import { captureManualRoute, moveWireSegment } from './manual-routing.js';
 import { findConnectorTagPosition, replaceWireWithTags } from './connector-tag-actions.js';
 import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, labelClipboardBounds, prepareLabelPaste } from './label-clipboard.js';
+import { synchronizeWireLabelColors, setConnectedWireColor, setConductorColor } from './model.js';
 import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT, tagWidth, tagHeight, tagName, tagNameKey, matchingTags, nextTagName, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
 const $ = selector => document.querySelector(selector);
@@ -30,7 +31,10 @@ function newModule(type = 'AI', extra = {}) {
 function newTag(name = nextTagName(project.nodes), extra = {}) {
   return { id: makeId('tag'), kind: 'tag', name: tagName(name), wireSide: 'right', x: 0, y: 0, ...extra };
 }
-const resizableLabel = node => ['device', 'tag'].includes(node?.kind);
+function newWireLabel(name = 'Wire label', extra = {}) {
+  return { id: makeId('label'), kind: 'wire-label', name, x: 0, y: 0, color: '#202631', ...extra };
+}
+const resizableLabel = node => ['device', 'tag', 'wire-label'].includes(node?.kind);
 const labelWidth = node => node?.kind === 'tag' ? tagWidth(node) : deviceWidth(node);
 const labelHeight = node => node?.kind === 'tag' ? tagHeight(node) : deviceHeight(node);
 function labelSizeLimits(node) {
@@ -88,7 +92,7 @@ function commitTextEdit() {
 }
 function change(callback, message, routeOptions = true) {
   commitTextEdit();
-  const before = clone(project); callback();
+  const before = clone(project); callback(); synchronizeWireLabelColors(project);
   if (JSON.stringify(before) === JSON.stringify(project)) return;
   remember(before); render(routeOptions); saveLocal(); if (message) notify(message);
 }
@@ -127,14 +131,14 @@ function jumpToNode(id) {
   commitTextEdit(); clearSelection(); selected.add(n.id);
   focusedModuleId = scheduleModuleIdForNode(n, project) || '';
   render(false);
-  if (n.kind === 'tag') view.zoom = Math.max(.9, Math.min(1.3, view.zoom));
+  if (['tag', 'wire-label'].includes(n.kind)) view.zoom = Math.max(.9, Math.min(1.3, view.zoom));
   const size = nodeSize(n);
   view.x = n.x + size.width / 2 - stage.clientWidth / view.zoom / 2;
   view.y = n.y + size.height / 2 - stage.clientHeight / view.zoom / 2;
   syncView();
-  if (n.kind === 'tag') {
+  if (['tag', 'wire-label'].includes(n.kind)) {
     canvas.querySelector(`[data-node="${CSS.escape(n.id)}"]`)?.focus({ preventScroll: true });
-    $('#status-message').textContent = `Viewing ${n.name || 'Unnamed tag'} · ${tagLocation(n)}`;
+    $('#status-message').textContent = n.kind === 'tag' ? `Viewing ${n.name || 'Unnamed tag'} · ${tagLocation(n)}` : `Viewing ${n.name || 'Wire label'} · label on a continuous wire`;
   }
 }
 function world(event) { const r = canvas.getBoundingClientRect(); return { x: view.x + (event.clientX - r.left) / view.zoom, y: view.y + (event.clientY - r.top) / view.zoom }; }
@@ -212,7 +216,7 @@ function setupGrid() {
 function portMarkup(p, localX, localY, exporting = false) {
   if (exporting) return '';
   const connected = !!occupied(p.id);
-  const fill = p.kind === 'device' ? p.color : '#ffffff';
+  const fill = ['device', 'wire-label'].includes(p.kind) ? safeColor(p.color) : '#ffffff';
   return `<g class="port ${connected ? 'is-connected' : ''} ${pendingPort === p.id ? 'is-start' : ''}" data-port="${esc(p.id)}" role="button" aria-label="${esc(p.name)}" tabindex="0" transform="translate(${localX} ${localY})"><title>${esc(p.name)}${connected ? ' · connected' : ' · click or drag to connect'}</title><circle class="port-hit" r="${p.hitRadius || 13}" fill="transparent"/><circle class="port-dot" r="${p.kind === 'device' ? 5.5 : 4}" fill="${fill}" stroke="${connected ? '#0b9186' : (p.kind === 'device' && p.color.toLowerCase() === '#ffffff' ? '#8996a4' : '#64788a')}" stroke-width="1.6"/></g>`;
 }
 
@@ -301,11 +305,11 @@ function tagMarkup(n, exporting = false) {
   out += '</g>'; return out;
 }
 function nodeMarkup(n, exporting = false, embedded = {}) {
-  return n.kind === 'module' ? moduleMarkup(n, exporting, embedded) : n.kind === 'tag' ? tagMarkup(n, exporting) : deviceMarkup(n, exporting);
+  return n.kind === 'module' ? moduleMarkup(n, exporting, embedded) : n.kind === 'tag' ? tagMarkup(n, exporting) : n.kind === 'wire-label' ? wireLabelMarkup(n, exporting) : deviceMarkup(n, exporting);
 }
 const deviceTextMeasure = document.createElement('canvas').getContext('2d');
-function deviceNameLayout(name, width, height) {
-  const availableWidth = width - 82, availableHeight = height - 34;
+function deviceNameLayout(name, width, height, { horizontalPadding = 82, verticalPadding = 34 } = {}) {
+  const availableWidth = width - horizontalPadding, availableHeight = height - verticalPadding;
   let lines = [], fontSize = 15, lineHeight = 18, maxLines = 1;
   for (; fontSize >= 10; fontSize--) {
     deviceTextMeasure.font = `700 ${fontSize}px Arial`;
@@ -356,6 +360,23 @@ function deviceMarkup(n, exporting = false) {
     else out += portMarkup(p, x, y);
   });
   if (!exporting && selected.has(n.id) && selected.size === 1) out += labelResizeMarkup(n, w, h);
+  return out + '</g>';
+}
+
+function wireLabelMarkup(n, exporting = false) {
+  const w = deviceWidth(n), h = deviceHeight(n), color = safeColor(n.color);
+  const isSelected = !exporting && selected.has(n.id);
+  const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Wire label', w, h, { horizontalPadding: 24, verticalPadding: 20 });
+  let out = `<g class="wire-label-node ${isSelected ? 'is-selected' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-wire-label-node="true" data-drag-handle="true" role="button" tabindex="0" aria-label="Wire label ${esc(n.name || 'Unnamed label')}"`} transform="translate(${n.x} ${n.y})">`;
+  if (isSelected) out += `<rect x="-6" y="-6" width="${w + 12}" height="${h + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
+  out += `<rect class="wire-label-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/>`;
+  lines.forEach((line, i) => { out += `<text class="wire-label-title" x="${w / 2}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
+  for (const side of ['left', 'right']) {
+    const x = side === 'left' ? 0 : w;
+    if (exporting) out += `<circle cx="${x}" cy="${h / 2}" r="2.5" fill="${color}" stroke="${color.toLowerCase() === '#ffffff' ? '#8996a4' : color}" stroke-width="1"/>`;
+    else out += portMarkup(geo.ports[`${n.id}:${side}`], x, h / 2);
+  }
+  if (isSelected && selected.size === 1) out += labelResizeMarkup(n, w, h);
   return out + '</g>';
 }
 
@@ -512,7 +533,8 @@ function renderBoard(reroute = false) {
   $('#nodes-layer').innerHTML = project.nodes.map(n => nodeMarkup(n)).join('');
   renderOverlay();
   const tagCount = project.nodes.filter(n => n.kind === 'tag').length;
-  $('#board-count').textContent = `${project.nodes.filter(n => n.kind === 'module').length} modules · ${project.nodes.filter(n => n.kind === 'device').length} devices${tagCount ? ` · ${tagCount} tags` : ''} · ${project.wires.length} wires`;
+  const wireLabelCount = project.nodes.filter(n => n.kind === 'wire-label').length;
+  $('#board-count').textContent = `${project.nodes.filter(n => n.kind === 'module').length} modules · ${project.nodes.filter(n => n.kind === 'device').length} devices${wireLabelCount ? ` · ${wireLabelCount} wire label${wireLabelCount === 1 ? '' : 's'}` : ''}${tagCount ? ` · ${tagCount} tags` : ''} · ${project.wires.length} wires`;
   $('#canvas-hint').hidden = project.nodes.length > 0;
   const blocked = routing.diagnostics?.blocked || 0;
   if (blocked) $('#status-message').textContent = `${blocked} wire${blocked > 1 ? 's need' : ' needs'} more room. Move the obstruction or adjust the affected wire.`;
@@ -580,7 +602,15 @@ function renderDeviceList() {
   if (picked?.kind === 'device' && !scope.includes(picked)) scope.push(picked);
   const devices = scope.filter(n => n.kind === 'device');
   list.innerHTML = devices.length ? devices.map(n => `<button class="device-list-item ${selected.has(n.id) ? 'active' : ''}" data-select-node="${esc(n.id)}"><span class="list-cable">${esc(n.cable || '—')}</span><span><strong>${esc(n.name || 'Unnamed device')}</strong><small>${n.wireCount} wires · ${project.wires.filter(w => w.from.startsWith(n.id + ':')).length} connected</small></span></button>`).join('') : '<p class="muted-empty">Add a device, then connect its conductor dots to module ports.</p>';
-  renderTagList();
+  renderTagList(); renderWireLabelList();
+}
+function renderWireLabelList() {
+  const list = $('#wire-label-list'); if (!list) return;
+  const labels = project.nodes.filter(n => n.kind === 'wire-label');
+  list.innerHTML = labels.map(n => {
+    const count = ['left', 'right'].filter(side => occupied(`${n.id}:${side}`)).length;
+    return `<button class="tag-list-item ${selected.has(n.id) ? 'active' : ''}" data-select-node="${esc(n.id)}" aria-label="Go to wire label ${esc(n.name || 'Unnamed label')}" aria-pressed="${selected.has(n.id)}"><svg class="icon" aria-hidden="true"><use href="#i-wire-label"/></svg><span><strong>${esc(n.name || 'Wire label')}</strong><small>${count} of 2 sides connected</small></span></button>`;
+  }).join('');
 }
 function renderTagList() {
   const list = $('#tag-list'); if (!list) return;
@@ -619,7 +649,7 @@ function moduleChannelsMarkup(n) {
     const wire = project.wires.find(w => [w.from, w.to].some(id => id.startsWith(n.id + ':') && geo.ports[id]?.channel === channel));
     const opposite = wire && (wire.from.startsWith(n.id + ':') ? wire.to : wire.from);
     const device = assigned || (opposite && nodeById(opposite.split(':')[0]));
-    const detail = device?.kind === 'module' ? 'Connected module' : device?.kind === 'tag' ? `Connector tag · ${matchingTags(project.nodes, device).length} matching` : `Cable ${esc(device?.cable || '—')}`;
+    const detail = device?.kind === 'module' ? 'Connected module' : device?.kind === 'tag' ? `Connector tag · ${matchingTags(project.nodes, device).length} matching` : device?.kind === 'wire-label' ? 'Wire label' : `Cable ${esc(device?.cable || '—')}`;
     const label = `<span class="channel-number">CH${channel}</span><span><strong>${esc(device?.name || 'Spare')}</strong>${device ? `<small>${detail}</small>` : '<small>No device assigned</small>'}${original ? `<code>${esc(original.tag)}</code>` : ''}</span>`;
     return device ? `<button class="channel-row" data-select-node="${esc(device.id)}">${label}</button>` : `<div class="channel-row is-spare">${label}</div>`;
   }).join('')}${source?.typeInferred ? `<p class="source-note">The sheet labels this module AI. The ${esc(t.label)} artwork is selected from your references using its channel count${source.channels.some(c => c.device) ? ' and device names' : ''}.</p>` : ''}</section>`;
@@ -636,17 +666,27 @@ function renderInspector() {
   const root = $('#inspector-content'), n = selectedNode(), w = project.wires.find(w => w.id === selectedWire);
   if (pendingPort && geo.ports[pendingPort]) {
     const start = geo.ports[pendingPort];
-    const destination = start.kind === 'tag' ? 'module terminal or cable conductor' : start.kind === 'device' ? 'module terminal or connector tag' : start.connectorRole === 'terminal' ? 'device conductor, connector tag, or terminal on another module' : 'device conductor, DIN terminal, or connector tag';
+    const destination = start.kind === 'wire-label' ? 'cable conductor, module terminal, connector tag, or another wire label' : start.kind === 'tag' ? 'module terminal, cable conductor, or wire label' : start.kind === 'device' ? 'module terminal, connector tag, or wire label' : start.connectorRole === 'terminal' ? 'device conductor, wire label, connector tag, or terminal on another module' : 'device conductor, wire label, DIN terminal, or connector tag';
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTING</span><h2>Choose a terminal</h2><p>${esc(start.name)}</p></div><div class="instruction-card">Click a ${destination} to finish the wire. A teal ring appears when it snaps into place.</div><button class="secondary full-width" data-action="cancel-wire">Cancel connection <kbd>Esc</kbd></button>`; return;
   }
   if (w) {
     const a = geo.ports[w.from], b = geo.ports[w.to], r = routing.routes[w.id];
-    const tagAction = a?.kind !== 'tag' && b?.kind !== 'tag' ? '<button class="secondary" data-action="replace-with-tags">Replace with tags</button>' : '';
+    const tagAction = [a, b].every(port => ['device', 'module'].includes(port?.kind)) ? '<button class="secondary" data-action="replace-with-tags">Replace with tags</button>' : '';
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE PROPERTIES</span><h2>Connection</h2><p>Drag a segment to adjust this wire.</p></div><div class="connection-summary"><span>${esc(a?.name)}</span><span class="connection-arrow">↓</span><span>${esc(b?.name)}</span></div>${wireSegmentControls(w, r)}${field('Wire color', `<div class="color-field"><input type="color" data-wire-prop="color" value="${safeColor(w.color)}"><input data-wire-prop="color" value="${safeColor(w.color)}" pattern="#[0-9a-fA-F]{6}" maxlength="7" aria-label="Wire hex color"></div>`)}${field('Thickness', `<div class="range-field"><input type="range" min="1" max="8" step=".5" data-wire-prop="width" value="${w.width}"><output>${w.width} px</output></div>`)}<div class="route-note ${r?.status === 'blocked' ? 'warning' : ''}">${r?.status === 'blocked' ? 'This path needs more room. Move the obstruction, adjust a segment, or auto-route this wire.' : r?.crossings?.length ? 'Separate lanes · bridges at crossings' : `${w.manual ? 'Manual' : project.settings.autoRoute ? 'Automatic' : 'Fixed'} route · separate wire lanes`}</div><div class="inspector-actions">${tagAction}<button class="secondary" data-action="reconnect">Reconnect wire</button><button class="danger" data-action="delete">Delete wire</button></div>`; return;
   }
   if (n?.kind === 'tag') {
     const names = [...new Map(project.nodes.filter(tag => tag.kind === 'tag' && tag.id !== n.id && tagNameKey(tag.name)).map(tag => [tagNameKey(tag.name), tagName(tag.name)])).values()];
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTOR TAG</span><h2>Named connection</h2><p>Use the same name at both ends to replace a long wire.</p></div>${field('Tag name', textInput('name', n.name, 'maxlength="64" list="tag-name-options" placeholder="e.g. MOTOR_RUN"'))}<datalist id="tag-name-options">${names.map(name => `<option value="${esc(name)}"></option>`).join('')}</datalist>${labelSizeControls(n)}${field('Connection side', `<select data-prop="wireSide" aria-label="Connection side">${['left', 'right', 'top', 'bottom'].map(side => `<option value="${side}" ${n.wireSide === side ? 'selected' : ''}>${side[0].toUpperCase() + side.slice(1)} edge</option>`).join('')}</select>`)}<p class="tag-empty-note">Matching names share a connection. Letter case and surrounding spaces are ignored.</p><div id="tag-links">${tagConnectionsMarkup(n)}</div><div class="inspector-actions"><button class="secondary" data-action="add-matching-tag">Add matching tag</button><button class="danger" data-action="delete">Delete tag</button></div>`; return;
+  }
+  if (n?.kind === 'wire-label') {
+    const color = safeColor(n.color);
+    const sides = ['left', 'right'].map(side => {
+      const portId = `${n.id}:${side}`, wire = occupied(portId);
+      const opposite = wire && geo.ports[wire.from === portId ? wire.to : wire.from];
+      const caption = `${side[0].toUpperCase() + side.slice(1)} side`;
+      return opposite ? `<button class="tag-peer" data-select-node="${esc(opposite.nodeId)}"><strong>${caption}</strong><span class="tag-peer-meta">${esc(opposite.name)}</span></button>` : `<p class="tag-empty-note"><strong>${caption}</strong> · Not connected</p>`;
+    }).join('');
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE LABEL</span><h2>Label on a wire</h2><p>One continuous wire through the left and right connection points.</p></div>${field('Label name', textInput('name', n.name, 'maxlength="100"'))}${labelSizeControls(n)}<div class="wire-label-color"><span class="wire-label-color-swatch" style="background:${color}"></span><span>Wire color <strong>${color.toUpperCase()}</strong></span></div><p class="tag-empty-note">Follows the connected cable. Change the color of either wire section to update the entire connection.</p><section class="tag-connections"><h3>Connected sides</h3>${sides}</section><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate label</button><button class="danger" data-action="delete">Delete label</button></div>`; return;
   }
   if (n?.kind === 'device') {
     const count = project.wires.filter(w => w.from.startsWith(n.id + ':')).length;
@@ -684,7 +724,7 @@ function finishWire(id) {
   const first = geo.ports[pendingPort], last = geo.ports[id];
   if (!first || !last) return false;
   if (first.id === last.id) { cancelWire(); return false; }
-  if (!compatiblePorts(first, last)) { notify(first.kind === 'tag' && last.kind === 'tag' ? 'Give the two tags the same name to link them without a wire.' : 'Connect a cable conductor or module terminal to a compatible terminal or connector tag.', true); return false; }
+  if (!compatiblePorts(first, last)) { notify(first.kind === 'tag' && last.kind === 'tag' ? 'Give the two tags the same name to link them without a wire.' : 'Connect a cable conductor, wire label, or module terminal to a compatible connection point.', true); return false; }
   const from = last.kind === 'device' ? last : first, to = last.kind === 'device' ? first : last;
   const previous = occupied(from.id), taken = occupied(to.id, previous?.id);
   if (taken && !to.allowMultiple && !to.common) { notify('That terminal is occupied. Select its wire to reconnect or delete it.', true); return false; }
@@ -692,6 +732,10 @@ function finishWire(id) {
   change(() => {
     if (previous) { previous.from = from.id; previous.to = to.id; delete previous.manual; delete previous.savedRoute; }
     else project.wires.push({ id: idNew, from: from.id, to: to.id, color: safeColor(from.color || to.color), width: project.settings.defaultWidth });
+    // Retain a deliberate wire-color override when an existing cable wire is
+    // reconnected through a label, then make its conductor and sections agree.
+    if (previous && from.kind === 'device') setConnectedWireColor(project, idNew, previous.color);
+    synchronizeWireLabelColors(project, { preferredPortId: from.kind === 'device' ? from.id : undefined });
     pendingPort = null; snapTarget = null; selectedWire = idNew;
   }, `${from.name} connected to ${to.name}`, { rerouteIds: [idNew] });
   return true;
@@ -877,6 +921,19 @@ function addDevice(count) {
   fitBoard();
   $('[data-prop="name"]')?.focus(); $('[data-prop="name"]')?.select();
 }
+function addWireLabel(name = 'Wire label', extra = {}) {
+  commitTextEdit();
+  if (project.nodes.length >= 500) return notify('This project already has 500 items. Remove an item before adding a label.', true);
+  const c = viewportCenter(), n = newWireLabel(name, extra), width = deviceWidth(n), height = deviceHeight(n);
+  const position = findConnectorTagPosition({ nodes: project.nodes, types: MODULE_TYPES,
+    desired: { x: c.x - width / 2, y: c.y - height / 2 }, width, height,
+    grid: project.settings.grid, snapToGrid: project.settings.snap, routes: routing.routes });
+  if (!position) return notify('No clear space for a label here. Pan to an open area, then add the label.', true);
+  Object.assign(n, position);
+  change(() => { project.nodes.push(n); clearSelection(); selected.add(n.id); }, 'Wire label added', false);
+  jumpToNode(n.id);
+  $('[data-prop="name"]')?.focus(); $('[data-prop="name"]')?.select();
+}
 function addTag(name = nextTagName(project.nodes), wireSide = 'right', size = {}) {
   commitTextEdit();
   if (project.nodes.length >= 500) return notify('This project already has 500 items. Remove an item before adding another tag.', true);
@@ -918,7 +975,8 @@ function deleteSelection() {
 function duplicateSelection() {
   const copy = project.nodes.filter(n => selected.has(n.id)); if (!copy.length) return;
   if (copy.length === 1 && copy[0].kind === 'tag') return addTag(copy[0].name, copy[0].wireSide, { width: tagWidth(copy[0]), height: tagHeight(copy[0]) });
-  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
+  if (copy.length === 1 && copy[0].kind === 'wire-label') return addWireLabel(copy[0].name, { width: deviceWidth(copy[0]), height: deviceHeight(copy[0]), color: copy[0].color });
+  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : n.kind === 'wire-label' ? 'label' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
 }
 
 const LABEL_CLIPBOARD_MIME = 'application/x-wirebench-labels+json';
@@ -929,9 +987,10 @@ function clipboardBlocked(event = null) {
   return !!gesture || !!$('dialog[open]') || (event && (isEditingTarget(event.target) || isEditingTarget(document.activeElement)));
 }
 function clipboardDescription(fragment) {
-  const count = fragment.nodes.length;
-  const kind = fragment.nodes.every(n => n.kind === 'tag') ? 'tag' : fragment.nodes.every(n => n.kind === 'device') ? 'device label' : 'label and tag';
-  return kind === 'label and tag' ? `${count} labels and tags` : `${count} ${kind}${count === 1 ? '' : 's'}`;
+  return [['device', 'device label'], ['wire-label', 'wire label'], ['tag', 'tag']].map(([kind, name]) => {
+    const count = fragment.nodes.filter(n => n.kind === kind).length;
+    return count ? `${count} ${name}${count === 1 ? '' : 's'}` : '';
+  }).filter(Boolean).join(' and ');
 }
 function captureLabelSelection() {
   commitTextEdit();
@@ -942,7 +1001,7 @@ function captureLabelSelection() {
 async function copyLabels() {
   if (clipboardBlocked()) return;
   const fragment = captureLabelSelection();
-  if (!fragment) return notify('Select a device label or connector tag to copy.');
+  if (!fragment) return notify('Select a device label, wire label, or connector tag to copy.');
   // Keep an in-app copy for browsers that do not expose the system clipboard.
   clipboardLocalOnly = true;
   try {
@@ -1069,11 +1128,11 @@ document.addEventListener('change', event => {
     const w = project.wires.find(w => w.id === selectedWire); if (!w) return;
     const prop = el.dataset.wireProp;
     if (prop === 'color' && !/^#[0-9a-fA-F]{6}$/.test(el.value)) { notify('Use a six-digit hex color, such as #ff5500.', true); renderInspector(); return; }
-    change(() => { w[prop] = prop === 'width' ? Math.max(1, Math.min(8, Number(el.value))) : el.value; }); return;
+    change(() => { if (prop === 'color') setConnectedWireColor(project, w.id, el.value); else w.width = Math.max(1, Math.min(8, Number(el.value))); }, undefined, prop === 'width'); return;
   }
   if (el.dataset.conductor) {
     const n = selectedNode(); if (!n) return;
-    change(() => { n.colors[el.dataset.conductor] = safeColor(el.value); for (const w of project.wires) if (w.from === `${n.id}:${el.dataset.conductor}`) w.color = el.value; }); return;
+    change(() => { setConductorColor(project, n.id, el.dataset.conductor, el.value); }, undefined, false); return;
   }
   if (el.id === 'snap-toggle') { project.settings.snap = el.checked; saveLocal(); syncControls(); }
   if (el.id === 'auto-route-toggle') { change(() => { project.settings.autoRoute = el.checked; }, el.checked ? 'Live auto-routing enabled for component moves · edited wires stay fixed' : 'Auto-routing off · wire paths stay in place', el.checked ? true : { preserveRoutes: true }); }
@@ -1088,15 +1147,15 @@ document.addEventListener('input', event => {
     const w = project.wires.find(w => w.id === selectedWire), prop = el.dataset.wireProp;
     if (!w || (prop === 'color' && !/^#[0-9a-fA-F]{6}$/.test(el.value))) return;
     if (!textEdit || textEdit.element !== el) { commitTextEdit(); textEdit = { element: el, before: clone(project) }; }
-    w[prop] = prop === 'width' ? Math.max(1, Math.min(8, Number(el.value))) : el.value;
+    if (prop === 'color') setConnectedWireColor(project, w.id, el.value);
+    else w.width = Math.max(1, Math.min(8, Number(el.value)));
     if (prop === 'color') document.querySelectorAll('[data-wire-prop="color"]').forEach(input => { if (input !== el) input.value = el.value; });
     renderBoard(prop === 'width'); saveLocal(); return;
   }
   if (el.dataset.conductor) {
     const n = selectedNode(); if (!n) return;
     if (!textEdit || textEdit.element !== el) { commitTextEdit(); textEdit = { element: el, before: clone(project) }; }
-    n.colors[el.dataset.conductor] = safeColor(el.value);
-    project.wires.forEach(w => { if (w.from === `${n.id}:${el.dataset.conductor}`) w.color = el.value; });
+    setConductorColor(project, n.id, el.dataset.conductor, el.value);
     renderBoard(false); saveLocal(); return;
   }
   const prop = el.dataset.prop;
@@ -1162,7 +1221,7 @@ async function imageData(type) {
   imageCache.set(type, result); return result;
 }
 async function exportPNG() {
-  if (!project.nodes.length) return notify('Add a module, cable, or connector tag before exporting.', true);
+  if (!project.nodes.length) return notify('Add a module, cable, wire label, or connector tag before exporting.', true);
   const epoch = ++exportEpoch;
   const button = $('[data-action="confirm-export"]'); button.disabled = true; const previousLabel = button.textContent; button.textContent = 'Preparing PNG…';
   try {
@@ -1200,7 +1259,7 @@ async function exportPNG() {
     if (epoch !== exportEpoch || !$('#export-dialog').open) return;
     const alpha = ctx.getImageData(0, 0, 1, 1).data[3];
     download(blob, fileName('.png', exportTitle)); $('#export-dialog').close();
-    $('#status-message').dataset.export = JSON.stringify({ width: output.width, height: output.height, transparent, cornerAlpha: alpha, bytes: blob.size, scope, modules: exportNodes.filter(n => n.kind === 'module').length, devices: exportNodes.filter(n => n.kind === 'device').length, tags: exportNodes.filter(n => n.kind === 'tag').length, wires: exportWires.length });
+    $('#status-message').dataset.export = JSON.stringify({ width: output.width, height: output.height, transparent, cornerAlpha: alpha, bytes: blob.size, scope, modules: exportNodes.filter(n => n.kind === 'module').length, devices: exportNodes.filter(n => n.kind === 'device').length, wireLabels: exportNodes.filter(n => n.kind === 'wire-label').length, tags: exportNodes.filter(n => n.kind === 'tag').length, wires: exportWires.length });
     notify(`PNG exported · ${output.width} × ${output.height} · ${transparent ? 'transparent background' : 'white background'}`);
   } catch (error) { notify(error.message || 'Export failed. Try again at a smaller scale.', true); }
   finally { button.disabled = false; button.textContent = previousLabel; }
@@ -1208,7 +1267,7 @@ async function exportPNG() {
 
 const actions = {
   undo, redo, 'save-project': saveProject, 'open-project': () => $('#project-file').click(),
-  'add-2wire': () => addDevice(2), 'add-4wire': () => addDevice(4),
+  'add-2wire': () => addDevice(2), 'add-4wire': () => addDevice(4), 'add-wire-label': () => addWireLabel(),
   'add-tag': () => addTag(), 'add-matching-tag': addMatchingTag, 'replace-with-tags': replaceSelectedWireWithTags,
   'zoom-in': () => zoomBy(1.2), 'zoom-out': () => zoomBy(1 / 1.2), fit: () => focusModule(''),
   'select-tool': () => { tool = 'select'; syncControls(); }, 'pan-tool': () => { tool = 'pan'; syncControls(); },
@@ -1302,6 +1361,7 @@ document.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'h') { tool = 'pan'; syncControls(); }
   else if (event.key === 'Enter' && event.target.closest('[data-port]')) { const id = event.target.closest('[data-port]').dataset.port; pendingPort ? finishWire(id) : beginWire(id); }
   else if (event.key === 'Enter' && event.target.closest('[data-tag-node]')) { event.preventDefault(); jumpToNode(event.target.closest('[data-tag-node]').dataset.node); }
+  else if (event.key === 'Enter' && event.target.closest('[data-wire-label-node]')) { event.preventDefault(); jumpToNode(event.target.closest('[data-wire-label-node]').dataset.node); }
   else if (event.key === 'Enter' && event.target.closest('[data-wire]')) { event.preventDefault(); selected.clear(); selectedWire = event.target.closest('[data-wire]').dataset.wire; selectedSegmentIndex = 0; render(false); canvas.querySelector(`[data-wire="${CSS.escape(selectedWire)}"] [data-wire-segment]`)?.focus(); }
 });
 document.addEventListener('keyup', event => { if (event.key === ' ') { spaceDown = false; syncControls(); } });

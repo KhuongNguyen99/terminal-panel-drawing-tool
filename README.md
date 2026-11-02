@@ -49,13 +49,21 @@ All device labels use **210 × 60 px** by default, including four-wire cables. E
 
 Four-wire cables use **red, black, white, green** from top to bottom. Older saved projects receive this color-order update once when opened: the third and fourth conductors and their connected wires receive the new default colors while retaining their physical endpoints, module connections, and saved paths. Custom colors stay with their existing physical conductors. Two-wire cables continue to use black and white.
 
-## Copy and paste device labels and tags
+## Wire labels
 
-Select a device label or connector tag on the canvas, then use **Copy** and **Paste** in the top toolbar, or **Ctrl+C / Ctrl+V** on Windows and Linux and **Cmd+C / Cmd+V** on macOS. Use **Shift+click** to add more labels or tags to the selection and copy them as a group. A selection rectangle also works.
+Click **Wire label** in the library’s **Labels** section to add a name to a continuous wire. Each label displays only its name and has one connection point on the left and one on the right, with no cable number or additional conductors.
 
-Copies preserve names, custom width and height, conductor colors, cable-number position, and connector-side settings. Device labels also retain their cable numbers and two-wire or four-wire configuration. Pasted items are separate editable copies, ready to wire; their existing wires are not copied. A pasted tag retains its name, so it belongs to the same matching-name connection group until renamed.
+Connect **cable conductor → wire label → channel** by wiring the conductor to the label’s left dot and the right dot to the channel. Both segments follow the cable conductor’s color. Changing the color of the cable conductor or either connected segment updates the entire continuous connection. Labels can be chained: connect one label’s right dot to the next label’s left dot before continuing to the channel.
 
-**Copy** becomes available when the selection contains a device label or connector tag. **Paste** remains available for pasting labels and tags from the clipboard. Normal text copying and pasting still works while editing a name or another text field.
+Wire labels start at **210 × 60 px**. Edit the name and dimensions in Properties, drag the label to move it, or use its resize handles. Connected wire endpoints follow the label. Wire labels support Copy/Paste with device labels and connector tags, and their names, sizes, and positions persist in saved projects and PNG exports.
+
+## Copy and paste labels and tags
+
+Select a device label, wire label, or connector tag on the canvas, then use **Copy** and **Paste** in the top toolbar, or **Ctrl+C / Ctrl+V** on Windows and Linux and **Cmd+C / Cmd+V** on macOS. Use **Shift+click** to add more labels or tags to the selection and copy them as a group. A selection rectangle also works.
+
+Copies preserve names, custom width and height, and applicable color and side settings. Device labels also retain their cable numbers and two-wire or four-wire configuration. Pasted items are separate editable copies, ready to wire; their existing wires are not copied. A pasted tag retains its name, so it belongs to the same matching-name connection group until renamed.
+
+**Copy** becomes available when the selection contains a device label, wire label, or connector tag. **Paste** remains available for pasting labels and tags from the clipboard. Normal text copying and pasting still works while editing a name or another text field.
 
 ## Connector tags
 
@@ -90,7 +98,7 @@ The 24 `.wire_ok` rows are status metadata, not extra physical channels. Eight d
 - Scroll to zoom; hold Space and drag to pan. `V` selects the move tool; `H` selects pan.
 - Arrow keys move selected items by one grid step; Shift+arrow moves five steps.
 - `Delete` removes the selection. `Ctrl/Cmd+Z` undoes; `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redoes.
-- `Ctrl/Cmd+C` copies selected device labels and connector tags; `Ctrl/Cmd+V` pastes ready-to-wire copies. The **Copy** and **Paste** toolbar buttons perform the same actions. Shift-click to copy a group.
+- `Ctrl/Cmd+C` copies selected device labels, wire labels, and connector tags; `Ctrl/Cmd+V` pastes ready-to-wire copies. The **Copy** and **Paste** toolbar buttons perform the same actions. Shift-click to copy a group.
 - `Ctrl/Cmd+D` duplicates the selection without copying external connections.
 - `Ctrl/Cmd+S` saves a project file. `F` fits the board.
 

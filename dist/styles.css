@@ -142,3 +142,15 @@ button.channel-row:hover{border-color:#8db8aa;background:#f0f7f3}
 @media(max-width:1200px){.clipboard-actions{padding-right:6px}.top-actions .clipboard-button{width:32px;padding:6px}.top-actions .clipboard-button>span{display:none}}
 @media(max-width:570px){.clipboard-actions{gap:1px;padding-right:4px;margin-right:1px}.top-actions .clipboard-button{width:28px;min-height:30px;padding:5px}}
 @media(max-width:460px){.topbar .brand>span:last-child{display:none}.topbar .brand{gap:0;min-width:28px}}
+
+/* A plain name label has one connector on each side of the same wire. */
+.labels-section .wire-label-button~.connector-tag-button{margin-top:8px}
+.wire-label-thumb{background:#eaf2f5;color:#557f8d}
+.wire-label-thumb .icon{width:23px;height:23px;stroke-width:1.3}
+.wire-label-list .icon{color:#7498a1}
+.wire-label-color{display:flex;align-items:center;gap:8px;padding:10px 11px;margin:15px 0;border:1px solid #dce6e1;border-radius:7px;background:#f3f7f5;color:#71897b;font-size:10px;line-height:17px}
+.wire-label-color-swatch{display:inline-block;width:14px;height:14px;flex:none;border:1px solid #bac9c0;border-radius:4px}
+.wire-label-node,[data-node].wire-label-node{cursor:grab}
+.wire-label-node:active{cursor:grabbing}
+.stage.is-panning .wire-label-node{cursor:grab}
+.stage.is-connecting .wire-label-node{cursor:crosshair}

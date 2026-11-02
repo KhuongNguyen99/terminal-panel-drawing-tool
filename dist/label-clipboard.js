@@ -8,13 +8,13 @@ const WIRE_MARGIN = 10;
 const SEARCH_RADIUS = 12;
 const POSITION_MIN = -10000;
 const POSITION_MAX = 20000;
-const isLabel = node => node?.kind === 'device' || node?.kind === 'tag';
+const isLabel = node => ['device', 'tag', 'wire-label'].includes(node?.kind);
 const sizeOf = node => node.kind === 'tag'
   ? { width: tagWidth(node), height: tagHeight(node) }
   : { width: deviceWidth(node), height: deviceHeight(node) };
 const rect = (x, y, width, height, margin = 0) => ({ left: x - margin, top: y - margin, right: x + width + margin, bottom: y + height + margin });
 const overlaps = (a, b) => a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
-const invalidClipboard = () => new Error('The clipboard does not contain valid WireBench device labels or connector tags. Copy the labels again.');
+const invalidClipboard = () => new Error('The clipboard does not contain valid WireBench labels or connector tags. Copy the labels again.');
 
 function sanitizeFragment(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.format !== FORMAT || value.version !== 1 ||
@@ -124,7 +124,7 @@ export function prepareLabelPaste(project, fragment, types, { desired, routes = 
   if (!position) throw new Error('There is not enough clear space to paste these labels together. Pan to an open area or copy fewer labels and try again.');
   const usedIds = new Set([...project.nodes, ...(project.wires || []), ...sanitized.nodes].map(item => item.id));
   const nodes = sanitized.nodes.map((node, index) => {
-    const base = makeId(node.kind === 'tag' ? 'tag' : 'dev');
+    const base = makeId(node.kind === 'tag' ? 'tag' : node.kind === 'wire-label' ? 'label' : 'dev');
     let id = base, suffix = 2;
     while (usedIds.has(id)) id = `${base}-${suffix++}`;
     usedIds.add(id);

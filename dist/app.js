@@ -278,26 +278,21 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
 }
 const tagTextMeasure = document.createElement('canvas').getContext('2d');
 function tagMarkup(n, exporting = false) {
-  const side = n.wireSide || 'right', linked = matchingTags(project.nodes, n).length;
+  const side = n.wireSide || 'right';
   const w = tagWidth(n), h = tagHeight(n), tip = Math.min(10, h / 4);
   const picked = selectedNode(), isSelected = !exporting && selected.has(n.id);
   const isPeer = !exporting && picked?.kind === 'tag' && picked.id !== n.id && tagNameKey(n.name) && tagNameKey(picked.name) === tagNameKey(n.name);
   const shape = side === 'left' ? `M0 ${h / 2} L14 0 H${w} V${h} H14 Z` : side === 'right' ? `M0 0 H${w - 14} L${w} ${h / 2} L${w - 14} ${h} H0 Z` : side === 'top' ? `M0 ${tip} H${w / 2 - 10} L${w / 2} 0 L${w / 2 + 10} ${tip} H${w} V${h} H0 Z` : `M0 0 H${w} V${h - tip} H${w / 2 + 10} L${w / 2} ${h} L${w / 2 - 10} ${h - tip} H0 Z`;
   const cx = w / 2 + (side === 'left' ? 5 : side === 'right' ? -5 : 0);
   const centerY = h / 2 + (side === 'top' ? tip / 2 : side === 'bottom' ? -tip / 2 : 0);
-  const showCaption = !exporting && h >= 40;
-  const nameY = centerY + (showCaption ? (['top', 'bottom'].includes(side) ? -1 : -3) : 5);
+  const nameY = centerY + 5;
   const name = tagName(n.name) || 'Unnamed tag';
   const textWidth = w - (['left', 'right'].includes(side) ? 34 : 24);
   tagTextMeasure.font = '700 13px Arial';
   const fit = tagTextMeasure.measureText(name).width > textWidth ? ` textLength="${textWidth}" lengthAdjust="spacingAndGlyphs"` : '';
-  const caption = !tagNameKey(n.name) ? 'Enter a tag name' : linked ? `${linked} linked tag${linked === 1 ? '' : 's'}` : 'No matching tag';
-  tagTextMeasure.font = '400 8px Arial';
-  const captionFit = tagTextMeasure.measureText(caption).width > textWidth ? ` textLength="${textWidth}" lengthAdjust="spacingAndGlyphs"` : '';
   let out = `<g class="connector-tag-node ${isSelected ? 'is-selected' : ''} ${isPeer ? 'is-linked' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-tag-node="true" role="button" aria-label="Connector tag ${esc(name)} · ${tagNumber(n)}" tabindex="0"`} transform="translate(${n.x} ${n.y})">`;
   if (!exporting && (isSelected || isPeer)) out += `<rect x="-7" y="-7" width="${w + 14}" height="${h + 14}" rx="9" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="${isSelected ? '5 3' : '2 4'}" opacity="${isSelected ? 1 : .6}" pointer-events="none"/>`;
   out += `<title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text>`;
-  if (showCaption) out += `<text x="${cx}" y="${nameY + 12}" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#728c83"${captionFit} pointer-events="none">${esc(caption)}</text>`;
   const p = geo.ports[`${n.id}:connector`];
   if (p) out += portMarkup(p, p.x - n.x, p.y - n.y, exporting);
   if (isSelected && selected.size === 1) out += labelResizeMarkup(n, w, h);

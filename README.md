@@ -1,6 +1,6 @@
 # Wirebench
 
-A browser-based wiring editor built from the supplied DQ, AI, AI RTD, AQ, Ex-AI, and DIN resistor terminal references. No backend or third-party browser libraries are required.
+A browser-based wiring editor built from the supplied DQ, AI, AI RTD, AQ, Ex-AI, DIN resistor terminal, and 20-row DIN terminal block references. No backend or third-party browser libraries are required.
 
 ## Run locally
 
@@ -34,10 +34,12 @@ Browser autosaves are stored on each browser and origin. This repository include
 
 ## Using the editor
 
-1. Add an I/O module or DIN resistor terminal block and a 2-wire or 4-wire cable from the library.
+**DIN Solenoid Rail Terminal Block** adds the approved 20-row bank with 80 independent connection points. Every row has two mirrored three-column sections. On each side, the upper connector has a white arrow to the inner gray port; the lower connector has a black arrow to the middle gray port. Both arrow colors have bold black borders around their shafts and arrowheads. The yellow end terminals remain part of the hardware artwork. Arrows stay inside their row, and the canvas omits color-name labels. Connection dots are 20 units apart and snap to the routing grid. Properties shows the inner/middle connection status for each side of all 20 rows. The module works with cable labels, wire labels, connector tags, and other modules, and appears in individual PNG previews and batch ZIP exports. Saved modules using the previous default name, DIN Rail Terminal Block, adopt the new name when reopened; custom names remain intact.
+
+1. Add an I/O module or DIN terminal block and a 2-wire or 4-wire cable from the library.
 2. Select a device to edit its name and cable number, put the number on either side, or change which edge its wires leave from.
    Set its **Width** and **Height** in Properties, or drag its right, bottom, or bottom-right resize handle. Dragging follows the grid when Snap is on. Names reflow inside the resized label, conductors follow its edges, and connected wire endpoints follow the label. **Reset size** restores the original dimensions. Custom sizes are saved in the editable project and used in PNG exports.
-3. Click a device conductor, then a module channel port. Dragging from a conductor to a port also works. Ports snap at the outside of the channel labels. DIN connectors also accept wires from other I/O modules or terminal blocks; their wires leave upward or downward from the corresponding row.
+3. Click a device conductor, then a module channel port. Dragging from a conductor to a port also works. Ports snap at the outside of the channel labels or at the terminal bank's connection dots. DIN connectors also accept wires from other I/O modules or terminal blocks. Wires leave the resistor bank upward or downward, and the 20-row terminal bank leftward or rightward.
 4. Move modules and devices on the canvas. **Auto-route is off by default**: existing paths stay fixed, and only wires attached to a moved component update their endpoints. New connections receive an initial path around fixed wires and component rectangles. Bridges distinguish crossings.
 5. Click a wire to change its color or thickness, reconnect it, or delete it. Changing a device conductor's color updates its connected wire.
    Drag any wire segment or its square handle to move that section perpendicular to its direction. Horizontal sections move up/down; vertical sections move left/right. The wire inspector also provides a segment selector and exact X/Y position. Arrow keys nudge a focused segment handle; Shift moves five steps. Snap uses the canvas grid. End sections add bends to keep their ports attached. Each move is one undo step; Escape cancels a drag. Manual routes persist through save/open and export, and moving a component updates its wire endpoints. Moving a segment always keeps every other wire path fixed, including when live auto-routing is enabled. A position that would block a connection or overlap a component is rejected. **Auto-route this wire** finds a new path for only the selected connection. **Auto-route all** replaces every path, including manual edits, in one undoable step. Turn on the **Auto-route** checkbox for automatic recalculation while arranging components; manually edited wires remain fixed. Turn it off to freeze the current layout again. Moving an obstruction over a fixed path keeps that path visible with a warning so you can adjust it.
@@ -110,7 +112,7 @@ The deterministic Manhattan router avoids component rectangles, reserved termina
 
 The app is a manual diagram editor. It preserves the channel labels in the supplied references and does not infer electrical compatibility or signal assignments from wire colors. A module terminal accepts one conductor. DQ exposes eight individually connectable **0V** terminals beneath its eight positive output terminals: four on the left and four on the right. Each has its own connection dot and a bold red arrow to its terminal circle. Tooltips identify the side and position, while the canvas labels show only **0V**. Saved connections to the earlier single 0V point reopen on the left third 0V terminal at the same outer wire anchor.
 
-Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork; the DIN terminal bank uses the approved 2384 × 2055 transparent PNG. Bold red callout arrows point to the circular terminal coordinates. The DIN title sits above the entire block and its connector labels, with routing space below the title. New wire paths avoid the title bar. All artwork is embedded into exported PNGs.
+Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork. The DIN resistor bank uses the approved 2384 × 2055 transparent PNG, and the 20-row solenoid terminal bank uses its approved 1140 × 1380 transparent PNG. The I/O modules and resistor bank retain bold red callout arrows; the solenoid terminal bank uses white and black arrows with bold black borders. All arrowheads point to the circular terminal coordinates. DIN titles sit above the hardware, and new wire paths avoid the title bars. All artwork is embedded into exported PNGs.
 
 ## Source
 

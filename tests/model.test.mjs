@@ -17,16 +17,24 @@ test('editable project survives JSON save/reopen without changing its normalized
   assert.equal(reopened.wires[0].to, 'module-1:ch0-minus');
 });
 
-test('every module port uses its template geometry at the outside of its channel label', () => {
+test('every module port uses its template geometry and correct side connection anchors', () => {
   for (const [type, template] of Object.entries(MODULE_TYPES)) {
     const n = module({ type, x: 120, y: -80 });
     const { ports, obstacles } = geometry([n], MODULE_TYPES);
     assert.equal(Object.keys(ports).length, template.ports.length);
     for (const p of Object.values(ports)) {
       const local = template.ports.find(local => local.id === p.localId);
-      assert.equal(p.x, n.x + local.x, `${type} ${p.localId} outside channel label`);
+      assert.equal(p.x, n.x + local.x, `${type} ${p.localId} template anchor`);
       assert.equal(p.y, n.y + local.y);
-      if (['left', 'right'].includes(p.side)) assert.equal(local.x, p.side === 'left' ? 60 : template.width - 60);
+      if (['left', 'right'].includes(p.side)) {
+        if (type === 'DIN_TERMINAL') {
+          assert.equal(local.x, p.side === 'left' ? 40 : 820, 'wide terminal bank uses its approved external dots');
+          assert.equal(local.y, (local.signal === 'inner' ? 140 : 160) + local.channel * 40, 'bank row pairs keep their grid spacing');
+          assert.equal(local.showLabel, false, 'terminal bank dots have no canvas labels');
+        } else {
+          assert.equal(local.x, p.side === 'left' ? 60 : template.width - 60, 'existing I/O anchors stay outside their channel labels');
+        }
+      }
       assert.equal(p.kind, 'module');
       assert.equal(p.nodeId, n.id);
     }

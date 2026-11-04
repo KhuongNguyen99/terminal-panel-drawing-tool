@@ -226,13 +226,20 @@ function portMarkup(p, localX, localY, exporting = false) {
 const portLabelMeasure = document.createElement('canvas').getContext('2d');
 portLabelMeasure.font = '14px Arial';
 
-function calloutArrow(points) {
+function calloutArrow(points, appearance = null) {
   const target = points.at(-1), previous = points.at(-2);
   const dx = target.x - previous.x, dy = target.y - previous.y, length = Math.hypot(dx, dy);
   if (!length) return '';
   const ux = dx / length, uy = dy / length;
-  const baseX = target.x - ux * 10, baseY = target.y - uy * 10;
+  const headLength = appearance?.headLength ?? 10;
+  const baseX = target.x - ux * headLength, baseY = target.y - uy * headLength;
   const shaft = points.slice(0, -1).map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' ') + ` L${baseX} ${baseY}`;
+  if (appearance) {
+    const halfWidth = appearance.headHalfWidth ?? 5;
+    const color = safeColor(appearance.color), outline = safeColor(appearance.outline);
+    const head = `M${target.x} ${target.y} L${baseX - uy * halfWidth} ${baseY + ux * halfWidth} L${baseX + uy * halfWidth} ${baseY - ux * halfWidth} Z`;
+    return `<g pointer-events="none" stroke-linecap="round" stroke-linejoin="round"><path class="port-arrow port-arrow-outline" d="${shaft}" fill="none" stroke="${outline}" stroke-width="${appearance.outlineWidth}"/><path class="port-arrow" d="${shaft}" fill="none" stroke="${color}" stroke-width="${appearance.width}"/><path class="port-arrowhead" d="${head}" fill="${color}" stroke="${outline}" stroke-width="${appearance.headOutlineWidth}"/></g>`;
+  }
   return `<path class="port-arrow" d="${shaft}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><path class="port-arrowhead" d="M${target.x} ${target.y} L${baseX - uy * 5} ${baseY + ux * 5} L${baseX + uy * 5} ${baseY - ux * 5} Z" fill="#dc2626"/>`;
 }
 
@@ -248,6 +255,12 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
   out += `<image href="${esc(embedded[n.type] || t.image)}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" preserveAspectRatio="none" ${exporting ? '' : 'data-drag-handle="true"'} />`;
   out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + 5}" fill="#20303d" font-size="13" font-weight="700">${esc(n.name || t.label)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + 5}" text-anchor="end" fill="#20303d" font-size="16" font-weight="700">${esc(instance)}</text></g>`;
   for (const p of t.ports) {
+    if (p.calloutPoints?.length > 1) {
+      const label = modulePortLabel(n, p);
+      out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;
+      out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
+      continue;
+    }
     if (p.side === 'top' || p.side === 'bottom') {
       const top = p.side === 'top';
       const targets = p.pinTargets || [{ x: p.pinX ?? p.x, y: p.pinY ?? p.y }];
@@ -639,7 +652,16 @@ function assignmentMarkup(n) {
 function moduleChannelsMarkup(n) {
   const source = RIO_SCHEDULE.find(s => s.id === n.scheduleId), t = MODULE_TYPES[n.type];
   const channels = [...new Set(t.ports.map(p => p.channel).filter(c => c !== null))].sort((a, b) => a - b);
-  if (t.connectorRole === 'terminal') {
+  if (t.terminalLayout === 'split-rows') {
+    return `<section class="channel-schedule terminal-bank-schedule"><h3>Row connections</h3>${channels.map(channel => {
+      const state = (side, signal) => {
+        const port = t.ports.find(p => p.channel === channel && p.side === side && p.signal === signal);
+        return port && occupied(`${n.id}:${port.id}`) ? 'Connected' : 'Free';
+      };
+      return `<div class="channel-row"><span class="channel-number">${channel + 1}</span><span><strong>Row ${channel + 1}</strong><small>Left · Inner: ${state('left', 'inner')} · Middle: ${state('left', 'middle')}</small><small>Right · Inner: ${state('right', 'inner')} · Middle: ${state('right', 'middle')}</small></span></div>`;
+    }).join('')}</section>`;
+  }
+  if (n.type === 'DIN_RESISTOR') {
     return `<section class="channel-schedule"><h3>Connector status</h3>${channels.map(channel => {
       const state = side => occupied(`${n.id}:${side}-${channel + 1}`) ? 'Connected' : 'Free';
       const label = side => esc(modulePortLabel(n, t.ports.find(port => port.side === side && port.channel === channel)));
@@ -698,8 +720,8 @@ function renderInspector() {
   }
   if (n?.kind === 'module') {
     const t = MODULE_TYPES[n.type];
-    const rowNames = t.connectorRole === 'terminal' ? `<section class="terminal-row-names"><h3>Connector row names</h3>${field('Top row name', textInput('topRowName', terminalRowName(n, 'top'), 'maxlength="24" placeholder="e.g. TB10"'))}${field('Bottom row name', textInput('bottomRowName', terminalRowName(n, 'bottom'), 'maxlength="24" placeholder="e.g. TB11"'))}<p class="source-note">Each row uses its name followed by .1 through .10. One connection point represents both holes.</p></section>` : '';
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> labeled connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
+    const rowNames = n.type === 'DIN_RESISTOR' ? `<section class="terminal-row-names"><h3>Connector row names</h3>${field('Top row name', textInput('topRowName', terminalRowName(n, 'top'), 'maxlength="24" placeholder="e.g. TB10"'))}${field('Bottom row name', textInput('bottomRowName', terminalRowName(n, 'bottom'), 'maxlength="24" placeholder="e.g. TB11"'))}<p class="source-note">Each row uses its name followed by .1 through .10. One connection point represents both holes.</p></section>` : '';
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
   }
   if (selected.size > 1) {
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;

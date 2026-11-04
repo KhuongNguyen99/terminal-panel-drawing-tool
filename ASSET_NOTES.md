@@ -2,7 +2,7 @@
 
 The original PNG module bodies are deterministic crops of the images supplied by the user. The editor now displays SVG front-view reconstructions of those same bodies to keep outlines, terminal circles and readable markings sharp at every zoom. The SVGs preserve the original coordinate systems, sampled colors, nine terminal rows on the ET 200SP modules, four rows on Ex-AI, indicator layout, printed model identifiers and molded silhouette. Small unreadable factory/molded markings are retained as source-pixel vector traces; no missing lettering or new pin assignments are invented. These are reference-based diagram illustrations, not dimensional manufacturer CAD files. The original PNG crops remain available for comparison.
 
-The SVGs contain transparent exteriors and retain enclosed white indicator windows. The original external callout-arrow remnants are removed so the editor draws only its current bold red channel arrows. No generative image model is used.
+The five I/O SVGs contain transparent exteriors and retain enclosed white indicator windows. The original external callout-arrow remnants are removed so the editor draws only its current bold red channel arrows. These five I/O SVGs use deterministic reconstruction.
 
 | Template | Source | Port interpretation |
 |---|---|---|
@@ -50,3 +50,13 @@ Both single-terminal assets use flat vector shapes with transparent exteriors. T
 The module artwork scale is 60/232, matching its 232-pixel column pitch to a 60-unit connector pitch. External connector dots stay at x=50+60i and y=0/650. Paired red arrows aim at source x≈162+232i: top hole rows y≈194.5/443.8 and bottom hole rows y≈1859.2/1609.3. Each inner-hole branch uses the clear lane at editor x=75+60i beside its terminal. The title bar is above the complete block at local y=-100 with height32, and is a separate routing obstruction so outward wires route around it. The PNG is embedded into exports without an opaque background.
 
 Connections can run from either row to a cable conductor or to another module. These are neutral terminal identifiers; the editor does not infer polarity, internal circuit behavior, or a resistor value from the artwork.
+
+## DIN Solenoid Rail Terminal Block — 20 rows
+
+`dist/assets/module-din-terminal.png` is a byte-identical copy of the user's approved 1140 × 1380 transparent drawing. The drawing was generated from the supplied cabinet photograph with the wires removed, then corrected and approved to show exactly 20 complete rows, with a yellow connection at each end of every row. It is a visual reference, not manufacturer CAD.
+
+The `DIN_TERMINAL` template preserves that artwork and adds 80 independently connectable ports: two vertically stacked points on the left and two on the right for each row. Columns 1–3 form the left section and columns 4–6 the right. Left upper/white arrows target column 3; left lower/black arrows target column 2. Right upper/white arrows target column 4; right lower/black arrows target column 5. Yellow end columns have no external arrow assignment in this layout. The source image contains no arrow or text overlay.
+
+The 860 × 960 template scales the source artwork by 40/58. External dots use x=40/820 and y=140/160+40i, keeping all endpoints on the routing grid with 20-unit spacing. Their 8-unit hit areas remain separate. Arrowheads use measured circular-port centers from the approved image, while the outer dots retain exact grid coordinates. Both arrows fit within their physical row, including the first and last rows. White and black shafts retain the approved thicker first-row preview's 4.5-unit width and 12 × 10.4 arrowhead dimensions. Both use a bold black (#000000) border: a 10.5-unit shaft underlay and a 3-unit arrowhead stroke, all scaled with the artwork. The header sits above the hardware at y=-52 and is a separate routing obstacle.
+
+The canvas shows the arrow pairs and connection dots without color-name labels. Accessible port names and the Properties row-status list identify row, side, and inner/middle position. The editor, live PNG preview, individual PNG, and ZIP exports share the same arrow renderer. Saved modules using the former default name, DIN Rail Terminal Block, update to DIN Solenoid Rail Terminal Block on load; custom names and connector IDs are retained. No electrical continuity is inferred between these separate logical ports.

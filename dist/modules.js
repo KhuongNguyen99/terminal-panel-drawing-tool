@@ -141,6 +141,49 @@ const dinPorts = ['top', 'bottom'].flatMap(side => Array.from({ length: 10 }, (_
   group: side === 'top' ? 'Top row' : 'Bottom row',
 })));
 
+// The approved terminal bank has twenty horizontal rows, each split into two
+// three-column sections. Keep its reviewed artwork unchanged and measure the
+// physical holes separately from the regular, grid-aligned connection dots.
+const terminalBankScale = 40 / 58;
+const terminalBankBody = Object.freeze({
+  x: (860 - 1140 * terminalBankScale) / 2, y: 3,
+  w: 1140 * terminalBankScale, h: 1380 * terminalBankScale,
+});
+const terminalBankRows = [
+  213, 271.5, 330, 388.5, 446.5, 504.5, 562.5, 621, 679.5, 737.5,
+  795.5, 852.5, 910.5, 967.5, 1024.5, 1082, 1139.5, 1197, 1254.5, 1312,
+];
+const terminalBankArrowStyle = Object.freeze(Object.fromEntries(['inner', 'middle'].map(signal => [signal, Object.freeze({
+  color: signal === 'inner' ? '#ffffff' : '#121619',
+  outline: '#000000',
+  width: 4.5 * terminalBankScale,
+  outlineWidth: 10.5 * terminalBankScale,
+  headLength: 12 * terminalBankScale,
+  headHalfWidth: 5.2 * terminalBankScale,
+  headOutlineWidth: 3 * terminalBankScale,
+})])));
+const terminalBankPorts = ['left', 'right'].flatMap(side => terminalBankRows.flatMap((sourceY, channel) => ['inner', 'middle'].map(signal => {
+  const left = side === 'left', inner = signal === 'inner';
+  const x = left ? 40 : 820, y = (inner ? 140 : 160) + channel * 40;
+  const sourceX = left ? (inner ? 460 : 300) : (inner ? 657 : 811);
+  const pinX = terminalBankBody.x + sourceX * terminalBankScale;
+  const pinY = terminalBankBody.y + sourceY * terminalBankScale;
+  return Object.freeze({
+    id: `${side}-${channel + 1}-${signal}`,
+    label: `Row ${channel + 1} · ${left ? 'Left' : 'Right'} · ${inner ? 'Inner' : 'Middle'}`,
+    side, channel, signal, x, y, pinX, pinY,
+    targetColumn: left ? (inner ? 3 : 2) : (inner ? 4 : 5),
+    showLabel: false, hitRadius: 8,
+    group: `${left ? 'Left' : 'Right'} section`,
+    calloutPoints: Object.freeze([
+      Object.freeze({ x, y }),
+      Object.freeze({ x: pinX + (left ? -18 : 18) * terminalBankScale, y }),
+      Object.freeze({ x: pinX, y: pinY }),
+    ]),
+    arrowStyle: terminalBankArrowStyle[signal],
+  });
+})));
+
 export const MODULE_TYPES = Object.freeze({
   DQ: template('DQ', 'DQ', '8 × 24 V DC / 0.5 A', 'assets/module-dq.svg', dqBody, dqPorts,
     'Eight digital outputs and eight individually connectable 0V terminals.'),
@@ -161,6 +204,16 @@ export const MODULE_TYPES = Object.freeze({
         Object.freeze({ x: 12, y: -168, width: 616, height: 32, avoidPortEscape: true }),
       ]),
       imageAlt: 'Ten upright DIN resistor rail terminals, matching the approved flat-color artwork',
+    }),
+  DIN_TERMINAL: template('DIN_TERMINAL', 'DIN Solenoid Rail Terminal Block', '', 'assets/module-din-terminal.png', terminalBankBody, terminalBankPorts,
+    'Twenty rows split into left and right sections. Each section has an upper connection to its inner port and a lower connection to its middle port.', {
+      width: 860, height: 960, connectorRole: 'terminal', terminalLayout: 'split-rows', rowCount: 20,
+      header: Object.freeze({ x: 12, y: -52, width: 836, height: 32 }),
+      routingObstacles: Object.freeze([
+        Object.freeze({ x: 40, y: 0, width: 780, height: 960 }),
+        Object.freeze({ x: 12, y: -52, width: 836, height: 32, avoidPortEscape: true }),
+      ]),
+      imageAlt: 'Twenty complete terminal rows with yellow connections at both ends, matching the approved drawing',
     }),
 });
 

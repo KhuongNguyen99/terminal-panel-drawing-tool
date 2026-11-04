@@ -336,6 +336,7 @@ export function normalizeProject(input, types) {
     }
     if (n.kind === 'module') {
       if (!types[raw.type]) throw new Error(`Unknown module type: ${str(raw.type, 24)}`);
+      if (raw.type === 'DIN_TERMINAL' && n.name.trim().toLowerCase() === 'din rail terminal block') n.name = types[raw.type].label;
       const scheduleId = typeof raw.scheduleId === 'string' && /^[a-zA-Z0-9_-]{1,90}$/.test(raw.scheduleId) ? { scheduleId: raw.scheduleId } : {};
       const rowNames = raw.type === 'DIN_RESISTOR' ? { topRowName: terminalRowName(raw, 'top'), bottomRowName: terminalRowName(raw, 'bottom') } : {};
       return { ...n, type: raw.type, slot: str(raw.slot, 40), rio: str(raw.rio, 40), ...scheduleId, ...rowNames };

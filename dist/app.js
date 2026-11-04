@@ -260,7 +260,7 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
       const label = modulePortLabel(n, p);
       if (t.terminalLayout === 'split-rows' && p.signal === 'inner') {
         const left = p.side === 'left';
-        out += `<rect class="terminal-pair-shell" x="${p.x - (left ? 12 : 100)}" y="${p.y - 8}" width="112" height="36" rx="7" fill="#dc2626" fill-opacity=".14" stroke="#dc2626" stroke-opacity=".7" stroke-width="1.5" pointer-events="none"/>`;
+        out += `<rect class="terminal-pair-shell" x="${p.x - (left ? 10 : 94)}" y="${p.y - 6}" width="104" height="32" rx="6" fill="#b91c1c" fill-opacity=".5" stroke="#b91c1c" stroke-opacity=".75" stroke-width="1" pointer-events="none"/>`;
         pairLabels += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 10}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
       }
       out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;

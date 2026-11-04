@@ -1,5 +1,5 @@
 import { routeWires } from './router.js';
-import { captureManualRoute, resolveManualRoute } from './manual-routing.js';
+import { captureManualRoute } from './manual-routing.js';
 
 /**
  * Keep the current bends of existing wires unless the user asks to route them.
@@ -31,14 +31,7 @@ export function routeWithPreferences({
   const savedRoutes = Object.create(null);
   for (const wire of effectiveWires) {
     const route = result.routes[wire.id];
-    if (!route) continue;
-    if (route.status === 'blocked') {
-      // A component can be moved across an existing wire. Keep that wire's
-      // geometry visible with its blocked status instead of erasing it or
-      // choosing a new route. The caller can show the conflict and reject export.
-      if (wire.manual && !route.points.length) route.points = resolveManualRoute(wire.manual, portFor(wire.from), portFor(wire.to), { grid: result.grid, gap: result.gap }) || [];
-      continue;
-    }
+    if (!route || route.status === 'blocked') continue;
     const saved = captureManualRoute(route.points, portFor(wire.from), portFor(wire.to));
     if (saved) savedRoutes[wire.id] = saved;
   }

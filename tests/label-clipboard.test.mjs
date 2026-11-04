@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { FOUR_WIRE_ORDER_REVISION, geometry, normalizeProject, deviceWidth, deviceHeight, tagWidth, tagHeight } from '../dist/model.js';
+import { FOUR_WIRE_ORDER_REVISION, POSITION_MIN, POSITION_MAX, clampPosition, geometry, normalizeProject, deviceWidth, deviceHeight, tagWidth, tagHeight } from '../dist/model.js';
 import { routeWithPreferences } from '../dist/independent-routing.js';
 import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, labelClipboardBounds, prepareLabelPaste } from '../dist/label-clipboard.js';
 
@@ -75,6 +75,19 @@ test('clipboard parsing rejects malformed or oversized input and sanitizes recog
   assert.equal(Object.hasOwn(parsed, 'wires'), false);
   assert.equal(Object.hasOwn(parsed.nodes[1], 'arbitrary'), false);
   assert.throws(() => serializeLabelClipboard({}), /valid WireBench/);
+});
+
+test('labels at legal canvas boundaries remain copyable and pasteable after save and reopen', () => {
+  const original = device({ x: POSITION_MAX, y: POSITION_MIN });
+  const reopened = project([original]);
+  const copied = createLabelClipboard(reopened.nodes, [original.id]);
+  assert.ok(copied);
+  assert.deepEqual([copied.nodes[0].x, copied.nodes[0].y], [POSITION_MAX, POSITION_MIN]);
+  assert.deepEqual(parseLabelClipboard(serializeLabelClipboard(copied)), copied);
+  assert.equal(prepareLabelPaste(project(), copied, MODULE_TYPES, { desired: { x: 0, y: 0 } }).nodes.length, 1);
+  assert.equal(createLabelClipboard([device({ x: POSITION_MAX + 10 })], ['device']), null);
+  const moved = device({ x: clampPosition(POSITION_MAX + 10) });
+  assert.ok(createLabelClipboard([moved], ['device']));
 });
 
 test('clipboard bounds use actual custom label sizes without export padding', () => {

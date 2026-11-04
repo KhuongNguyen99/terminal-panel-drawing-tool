@@ -150,6 +150,71 @@ test('new wires route once around fixed wires without moving existing connection
   assert.ok(next.savedRoutes.new);
 });
 
+test('a remote dense terminal does not change the grid or path of an unrelated automatic wire', () => {
+  const nodes = [
+    { id: 'd', kind: 'device', wireCount: 2, wireSide: 'right', x: 0, y: 0 },
+    { id: 't', kind: 'tag', wireSide: 'left', x: 2200, y: 2200 },
+    { id: 's', kind: 'module', type: 'DIN_TERMINAL', x: 10000, y: 10005 },
+    { id: 'ds', kind: 'device', wireCount: 2, wireSide: 'right', x: 9450, y: 10110 },
+  ];
+  const geo = geometry(nodes, MODULE_TYPES);
+  const first = { id: 'first', from: 'd:black', to: 't:connector' };
+  const remote = { id: 'remote', from: 'ds:black', to: 's:left-1-middle' };
+  for (const grid of [10, 20]) {
+    const options = { ...geo, grid, gap: grid, rerouteAll: true };
+    const baseline = routeWithPreferences({ ...options, wires: [first] });
+    assert.equal(baseline.routes.first.status, 'ok');
+    for (const wires of [[first, remote], [remote, first]]) {
+      const result = routeWithPreferences({ ...options, wires });
+      assert.equal(result.diagnostics.blocked, 0);
+      assert.deepEqual(result.routes.first, baseline.routes.first);
+      assert.equal(result.routes.first.grid, grid);
+      assert.equal(result.routes.remote.grid, 5);
+      assert.equal(result.routes.remote.gap, 10);
+    }
+  }
+});
+
+test('a new wire cannot cover a displayed fixed route whose terminal escape is blocked', () => {
+  const nodes = [
+    { id: 'd', kind: 'device', wireCount: 2, wireSide: 'right', x: 0, y: 0 },
+    { id: 't', kind: 'tag', wireSide: 'left', x: 1200, y: 0 },
+  ];
+  const fixed = { id: 'old', from: 'd:black', to: 't:connector' };
+  const before = routeWithPreferences({ ...geometry(nodes, MODULE_TYPES), wires: [fixed] });
+  fixed.savedRoute = before.savedRoutes.old;
+  nodes.push(
+    { id: 'obstruction', kind: 'tag', wireSide: 'left', x: 215, y: 0 },
+    { id: 'd2', kind: 'device', wireCount: 2, wireSide: 'right', x: 300, y: 0 },
+    { id: 't2', kind: 'tag', wireSide: 'left', x: 800, y: 0 },
+  );
+  const next = routeWithPreferences({ ...geometry(nodes, MODULE_TYPES), wires: [
+    { id: 'new', from: 'd2:black', to: 't2:connector' }, fixed,
+  ] });
+  assert.equal(next.routes.old.status, 'blocked');
+  assert.deepEqual(next.routes.old.points, before.routes.old.points);
+  assert.equal(next.routes.new.status, 'blocked', 'its outward stub is occupied by the displayed fixed route');
+  assert.deepEqual(next.routes.new.points, []);
+});
+
+test('a crowded wire can still use a finer available escape when the placement grid is too coarse', () => {
+  const ports = [
+    { id: 'a', x: 0, y: 0, side: 'right' }, { id: 'b', x: 240, y: 40, side: 'left' },
+    { id: 'c', x: 1400, y: 0, side: 'right' }, { id: 'din', x: 1600, y: 0, side: 'left', routingPitch: 10 },
+  ];
+  const wires = [{ id: 'ordinary', from: 'a', to: 'b' }, { id: 'terminal', from: 'c', to: 'din' }];
+  const input = { ports, wires, grid: 20, gap: 20, obstacles: [{ id: 'near-source', x: 20, y: -6, width: 10, height: 12 }] };
+  const first = routeWithPreferences(input);
+  assert.equal(first.diagnostics.blocked, 0);
+  assert.equal(first.routes.ordinary.grid, 10);
+  assert.equal(first.routes.ordinary.gap, 10);
+  assert.deepEqual(first.routes.ordinary.points[1], { x: 10, y: 0 }, 'the coarse 20-unit escape hits the obstacle');
+  rememberRoutes(wires, first);
+  const reopened = routeWithPreferences(input);
+  assert.deepEqual(reopened.routes, first.routes);
+  assert.equal(reopened.diagnostics.visited, 0);
+});
+
 test('moving an unrelated component over a fixed wire preserves its visible geometry and reports the conflict', () => {
   const { ports, wires, initial } = collisionFixture();
   delete wires[1].manual;

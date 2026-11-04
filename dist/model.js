@@ -17,6 +17,21 @@ export const TAG_MIN_WIDTH = 1;
 export const TAG_MAX_WIDTH = 1000;
 export const TAG_MIN_HEIGHT = 1;
 export const TAG_MAX_HEIGHT = 600;
+export const MAX_PROJECT_NODES = 500;
+export const MAX_PROJECT_WIRES = 2000;
+export const POSITION_MIN = -10000;
+export const POSITION_MAX = 20000;
+
+export function canAddToProject(project, { nodes = 0, wires = 0 } = {}) {
+  return Number.isInteger(nodes) && nodes >= 0 && Number.isInteger(wires) && wires >= 0 &&
+    project.nodes.length + nodes <= MAX_PROJECT_NODES && project.wires.length + wires <= MAX_PROJECT_WIRES;
+}
+
+export const positionInBounds = (x, y) => [x, y].every(value =>
+  typeof value === 'number' && Number.isFinite(value) && value >= POSITION_MIN && value <= POSITION_MAX);
+
+export const clampPosition = value => Number.isFinite(Number(value))
+  ? Math.max(POSITION_MIN, Math.min(POSITION_MAX, Number(value))) : 0;
 
 export const tagName = value => value == null ? 'NET1' : String(value).trim().slice(0, 64).trim();
 export const tagNameKey = value => String(value ?? '').trim().toLowerCase();
@@ -311,10 +326,10 @@ export function geometry(nodes, types) {
 export function normalizeProject(input, types) {
   if (!input || typeof input !== 'object' || !Array.isArray(input.nodes) || !Array.isArray(input.wires)) throw new Error('This is not a Wirebench project file.');
   if (input.version !== 1) throw new Error('This project version is not supported.');
-  if (input.nodes.length > 500 || input.wires.length > 2000) throw new Error('This file is too large. Use up to 500 items and 2,000 wires per project.');
+  if (input.nodes.length > MAX_PROJECT_NODES || input.wires.length > MAX_PROJECT_WIRES) throw new Error('This file is too large. Use up to 500 items and 2,000 wires per project.');
   const ids = new Set();
   const str = (value, limit = 120) => String(value ?? '').slice(0, limit);
-  const pos = n => Number.isFinite(Number(n)) ? Math.max(-10000, Math.min(20000, Number(n))) : 0;
+  const pos = clampPosition;
   const nodes = input.nodes.map(raw => {
     if (!raw || !['module', 'device', 'tag', 'wire-label'].includes(raw.kind)) throw new Error('The project contains an unsupported item.');
     const id = str(raw.id, 90);

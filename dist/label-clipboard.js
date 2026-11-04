@@ -1,13 +1,11 @@
-import { FOUR_WIRE_ORDER_REVISION, deviceWidth, deviceHeight, tagWidth, tagHeight, geometry, makeId, normalizeProject, snap } from './model.js';
+import { FOUR_WIRE_ORDER_REVISION, MAX_PROJECT_NODES, canAddToProject, positionInBounds,
+  deviceWidth, deviceHeight, tagWidth, tagHeight, geometry, makeId, normalizeProject, snap } from './model.js';
 
 const FORMAT = 'wirebench-labels';
-const MAX_NODES = 500;
 const MAX_TEXT_LENGTH = 512 * 1024;
 const NODE_MARGIN = 20;
 const WIRE_MARGIN = 10;
 const SEARCH_RADIUS = 12;
-const POSITION_MIN = -10000;
-const POSITION_MAX = 20000;
 const isLabel = node => ['device', 'tag', 'wire-label'].includes(node?.kind);
 const sizeOf = node => node.kind === 'tag'
   ? { width: tagWidth(node), height: tagHeight(node) }
@@ -18,10 +16,10 @@ const invalidClipboard = () => new Error('The clipboard does not contain valid W
 
 function sanitizeFragment(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.format !== FORMAT || value.version !== 1 ||
-      !Array.isArray(value.nodes) || !value.nodes.length || value.nodes.length > MAX_NODES) return null;
+      !Array.isArray(value.nodes) || !value.nodes.length || value.nodes.length > MAX_PROJECT_NODES) return null;
   if (value.nodes.some(node => !node || typeof node !== 'object' || Array.isArray(node) || !isLabel(node) ||
       typeof node.id !== 'string' || !/^[a-zA-Z0-9_-]{1,90}$/.test(node.id) ||
-      ![node.x, node.y].every(n => typeof n === 'number' && Number.isFinite(n) && n >= POSITION_MIN && n <= POSITION_MAX))) return null;
+      !positionInBounds(node.x, node.y))) return null;
   try {
     // Clipboard version 1 uses the current conductor order. Normalization must
     // not migrate an already copied four-wire cable's white/green colors.
@@ -87,7 +85,7 @@ function visibleWireAreas(routes) {
 export function prepareLabelPaste(project, fragment, types, { desired, routes = {} } = {}) {
   const sanitized = sanitizeFragment(fragment);
   if (!sanitized) throw invalidClipboard();
-  if (project.nodes.length + sanitized.nodes.length > MAX_NODES) {
+  if (!canAddToProject(project, { nodes: sanitized.nodes.length })) {
     throw new Error('Pasting these labels would exceed the project limit of 500 items. Remove unused items or copy fewer labels.');
   }
   if (![desired?.x, desired?.y].every(Number.isFinite)) throw new Error('Choose a valid canvas position before pasting labels.');
@@ -108,7 +106,7 @@ export function prepareLabelPaste(project, fragment, types, { desired, routes = 
   let position = null;
   for (const candidate of candidates) {
     const { x, y } = candidate;
-    if (x < POSITION_MIN || x + maxXOffset > POSITION_MAX || y < POSITION_MIN || y + maxYOffset > POSITION_MAX) continue;
+    if (!positionInBounds(x, y) || !positionInBounds(x + maxXOffset, y + maxYOffset)) continue;
     const nodeEnvelope = rect(x, y, bounds.width, bounds.height, NODE_MARGIN);
     const wireEnvelope = rect(x, y, bounds.width, bounds.height, WIRE_MARGIN);
     const nearbyNodes = obstacles.filter(o => overlaps(nodeEnvelope, o));

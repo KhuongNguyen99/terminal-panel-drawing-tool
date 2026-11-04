@@ -5,7 +5,8 @@ import { resolveManualRoute } from './manual-routing.js';
  *
  * Public API:
  *   routeWires({ wires, ports, obstacles, grid = 10, gap = 10, preserveBlockedRoutes = false })
- *   -> { routes: { [wireId]: { points, status, crossings, diagnostics } }, diagnostics }
+ *   -> { routes: { [wireId]: { points, status, crossings, diagnostics, grid, gap } }, diagnostics, grid, gap }
+ * The result identifies the board defaults and the grid and clearance used by each wire.
  *
  * Ports are { id, nodeId, x, y, side: 'left' | 'right' | 'top' | 'bottom' } and may be passed
  * as an array, a Map, or an object. Wires have { id, from, to, width?, manual? };
@@ -112,6 +113,7 @@ class SegmentIndex {
   }
   add(points, wireId, exemptWireIds = null) {
     for (const seg of segments(points, wireId)) {
+      seg.gap = this.gap;
       if (exemptWireIds) seg.exemptWireIds = exemptWireIds;
       const index = seg.horizontal ? this.horizontal : this.vertical;
       const bucket = Math.floor(seg.fixed / this.grid);
@@ -128,7 +130,7 @@ class SegmentIndex {
     }
     return result;
   }
-  /** Returns Infinity for overlap, a tight parallel lane, or a corner/port touch. */
+  /** Returns a crossing count, or Infinity for a shared, too-close, or obstructed lane. */
   cost(a, b, allowCrossings, ownStubs = [], skipWireId = null) {
     const horizontal = eq(a.y, b.y), fixed = horizontal ? a.y : a.x;
     const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
@@ -138,13 +140,13 @@ class SegmentIndex {
     for (const other of same) {
       if (other.exemptWireIds?.has(skipWireId)) continue;
       const distance = Math.abs(fixed - other.fixed);
-      if (distance < Math.max(this.gap, EPS) - EPS && overlaps(lo, hi, other.lo, other.hi)) return Infinity;
+      if (distance < Math.min(this.gap, other.gap) - EPS && overlaps(lo, hi, other.lo, other.hi)) return Infinity;
       if (eq(fixed, other.fixed) && overlaps(lo, hi, other.lo, other.hi)) return Infinity;
     }
     for (const s of ownStubs) {
       if (s.horizontal === horizontal && eq(s.fixed, fixed) && overlaps(lo, hi, s.lo, s.hi)) return Infinity;
     }
-    let penalty = 0;
+    let crossings = 0;
     const perpendicular = this.candidates(horizontal ? this.vertical : this.horizontal, lo, hi);
     for (const other of perpendicular) {
       if (other.exemptWireIds?.has(skipWireId)) continue;
@@ -152,13 +154,13 @@ class SegmentIndex {
       // Crossing a previous bend or endpoint produces a junction-like ambiguity.
       if (eq(fixed, other.lo) || eq(fixed, other.hi)) return Infinity;
       if (!allowCrossings) return Infinity;
-      penalty += this.grid * 32;
+      crossings++;
     }
     for (const s of ownStubs) {
       if (s.horizontal === horizontal) continue;
       if (s.fixed > lo + EPS && s.fixed < hi - EPS && fixed > s.lo + EPS && fixed < s.hi - EPS) return Infinity;
     }
-    return penalty;
+    return crossings;
   }
   crossings(points) {
     const out = [], seen = new Set();
@@ -308,7 +310,7 @@ function search(start, end, rects, occupied, grid, options) {
       if (Number.isNaN(occupiedCost)) {
         occupiedCost = occupied.cost(
           { x: (x + minX) * grid, y: (y + minY) * grid },
-          { x: (nx + minX) * grid, y: (ny + minY) * grid }, allowCrossings, ownStubs);
+          { x: (nx + minX) * grid, y: (ny + minY) * grid }, allowCrossings, ownStubs) * grid * 32;
         if (reserved && finite(occupiedCost)) {
           occupiedCost += reserved.cost(
             { x: (x + minX) * grid, y: (y + minY) * grid },
@@ -397,86 +399,86 @@ function manualPathProblem(points, { from, to, start, end, rects, occupied, rese
   return '';
 }
 
-export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, gap = 10, preserveBlockedRoutes = false } = {}) {
-  grid = finite(Number(grid)) ? Math.max(2, Math.min(100, Number(grid))) : 10;
-  gap = finite(Number(gap)) ? Math.max(0, Number(gap)) : grid;
+export function routeWires({ wires = [], ports = [], obstacles = [], grid: requestedGrid = 10, gap: requestedGap = 10, preserveBlockedRoutes = false } = {}) {
+  const boardGrid = finite(Number(requestedGrid)) ? Math.max(2, Math.min(100, Number(requestedGrid))) : 10;
+  const boardGap = finite(Number(requestedGap)) ? Math.max(0, Number(requestedGap)) : boardGrid;
   const portMap = normalizePorts(ports), routes = {};
-  // Dense terminal pairs need separate lanes even on a coarser placement grid.
-  for (const wire of wires) for (const endpoint of [wire.from, wire.to]) {
-    const port = typeof endpoint === 'object' && endpoint !== null ? endpoint : portMap.get(endpoint);
-    if (finite(port?.routingPitch) && port.routingPitch >= 2) {
-      const aligned = eq(Number(port.x) % port.routingPitch, 0) && eq(Number(port.y) % port.routingPitch, 0);
+  const getPort = value => {
+    const port = typeof value === 'object' && value !== null ? value : portMap.get(value);
+    return validPort(port) ? { ...port, x: Number(port.x), y: Number(port.y) } : null;
+  };
+  const widest = wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
+  const obstaclesByGap = new Map();
+  const occupied = new SegmentIndex(boardGrid, boardGap), reserved = new SegmentIndex(boardGrid, 0);
+  const portUsers = new Map();
+  const diagnostics = { blocked: 0, crossings: 0, sharedSegments: 0, routed: 0, visited: 0 };
+  // Fixed wires reserve their paths first. Keep source order within both groups.
+  const orderedWires = [...wires.filter(wire => wire.manual != null), ...wires.filter(wire => wire.manual == null)];
+  let fineGrid = boardGrid, fineGap = boardGap;
+  const plans = orderedWires.map(wire => {
+    const from = getPort(wire.from), to = getPort(wire.to);
+    let grid = boardGrid, gap = boardGap;
+    for (const port of [from, to]) {
+      if (!finite(port?.routingPitch) || port.routingPitch < 2) continue;
+      const aligned = eq(port.x % port.routingPitch, 0) && eq(port.y % port.routingPitch, 0);
       grid = Math.min(grid, aligned ? port.routingPitch : Math.max(2, port.routingPitch / 2));
       gap = Math.min(gap, port.routingPitch);
     }
+    fineGrid = Math.min(fineGrid, grid);
+    fineGap = Math.min(fineGap, gap);
+    return { wire, from, to, grid, gap };
+  });
+  function lanes(from, to, grid, gap) {
+    if (!obstaclesByGap.has(gap)) obstaclesByGap.set(gap, normalizeRects(obstacles, Math.max(gap / 2, widest / 2 + 2)));
+    const rects = obstaclesByGap.get(gap);
+    return { grid, gap, rects, start: from && escapePort(from, rects, grid), end: to && escapePort(to, rects, grid) };
   }
-  const widest = wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
-  const padding = Math.max(gap / 2, widest / 2 + 2);
-  const rects = normalizeRects(obstacles, padding);
-  const occupied = new SegmentIndex(grid, gap);
-  const diagnostics = { blocked: 0, crossings: 0, sharedSegments: 0, routed: 0, visited: 0 };
-  const getPort = value => typeof value === 'object' && value !== null ? value : portMap.get(value);
-  // Reserve connected ports before the first route. A visually short first route
-  // must not run its trunk through the escape of a channel that is wired later.
-  const reservations = new Map(), reserved = new SegmentIndex(grid, 0);
-  // Fixed manual paths reserve their lanes before the automatic paths are searched.
-  // Preserve source order within both groups for deterministic crossing ownership.
-  const orderedWires = [...wires.filter(wire => wire.manual != null), ...wires.filter(wire => wire.manual == null)];
-  for (const wire of orderedWires) {
-    for (const endpoint of [wire.from, wire.to]) {
-      const p = getPort(endpoint);
-      if (!validPort(p)) continue;
-      const key = p.id ?? `${p.nodeId ?? ''}:${p.x}:${p.y}:${p.side}`;
-      if (!reservations.has(key)) {
-        const escape = escapePort({ ...p, x: Number(p.x), y: Number(p.y) }, rects, grid);
-        if (!escape) continue;
-        reservations.set(key, { points: escape.points, users: new Set() });
-      }
-      reservations.get(key).users.add(wire.id);
+  for (const plan of plans) {
+    const { wire, from, to, grid, gap } = plan;
+    plan.fine = lanes(from, to, fineGrid, fineGap);
+    // Historical fixed paths used the finest connected pitch. New searches start
+    // on their own grid and can still use these escapes in a crowded part of a drawing.
+    plan.preferred = wire.manual != null || (grid === fineGrid && gap === fineGap) ? plan.fine : lanes(from, to, grid, gap);
+    for (const [port, escape] of [[from, plan.fine.start], [to, plan.fine.end]]) {
+      if (!port) continue;
+      const key = port.id ?? `${port.nodeId ?? ''}:${port.x}:${port.y}:${port.side}`;
+      if (!portUsers.has(key)) portUsers.set(key, new Set());
+      const users = portUsers.get(key);
+      users.add(wire.id);
+      if (escape) reserved.add(escape.points, key, users);
     }
   }
-  for (const [key, reservation] of reservations) reserved.add(reservation.points, key, reservation.users);
-  for (const wire of orderedWires) {
+  function routePlan({ wire, from, to, fine }, lanes) {
+    const { grid, gap, rects, start, end } = lanes;
     const id = wire.id;
-    const result = { points: [], status: 'blocked', crossings: [], diagnostics: [] };
-    routes[id] = result;
-    const fromInput = getPort(wire.from), toInput = getPort(wire.to);
-    if (!validPort(fromInput) || !validPort(toInput)) {
-      result.diagnostics.push('A wire endpoint is missing or does not have a valid port side.'); diagnostics.blocked++; continue;
+    const result = { points: [], status: 'blocked', crossings: [], diagnostics: [], grid, gap };
+    occupied.gap = gap;
+    if (!from || !to) {
+      result.diagnostics.push('A wire endpoint is missing or does not have a valid port side.'); return result;
     }
-    const from = { ...fromInput, x: Number(fromInput.x), y: Number(fromInput.y) };
-    const to = { ...toInput, x: Number(toInput.x), y: Number(toInput.y) };
-    if (pointEqual(from, to)) {
-      result.diagnostics.push('The wire endpoints occupy the same position.'); diagnostics.blocked++; continue;
-    }
-    const start = escapePort(from, rects, grid), end = escapePort(to, rects, grid);
-    if (!start || !end) {
-      result.diagnostics.push('A component blocks the outward connection from this port. Move the overlapping components apart.'); diagnostics.blocked++; continue;
-    }
-    let stubsBlocked = false;
-    for (const stub of [...segments(start.points), ...segments(end.points)]) {
-      if (!finite(occupied.cost(stub.a, stub.b, true))) { stubsBlocked = true; break; }
-    }
-    if (stubsBlocked) {
-      result.diagnostics.push('Another wire occupies this port escape lane. Use a free port or increase the space between ports.'); diagnostics.blocked++; continue;
+    let problem = '';
+    if (pointEqual(from, to)) problem = 'The wire endpoints occupy the same position.';
+    else if (!start || !end) problem = 'A component blocks the outward connection from this port. Move the overlapping components apart.';
+    else if ([...segments(start.points), ...segments(end.points)].some(s =>
+      !finite(occupied.cost(s.a, s.b, true)) || (lanes !== fine && !finite(reserved.cost(s.a, s.b, false, [], id))))) {
+      problem = 'Another wire occupies this port escape lane. Use a free port or increase the space between ports.';
     }
     let path = null, lastReason = '';
-    if (wire.manual != null) {
-      const candidate = resolveManualRoute(wire.manual,
-        { ...from, escapeX: (start.points[1] || start.anchor).x, escapeY: (start.points[1] || start.anchor).y },
-        { ...to, escapeX: (end.points[1] || end.anchor).x, escapeY: (end.points[1] || end.anchor).y }, { grid, gap });
-      const problem = manualPathProblem(candidate, { from, to, start, end, rects, occupied, reserved, id });
-      if (problem) {
-        // Fixed paths remain visible when blocked. Keep their lanes occupied
-        // as well, so a new automatic wire cannot be laid over the geometry
-        // that independent-routing will preserve for the user to adjust.
-        if (preserveBlockedRoutes && Array.isArray(candidate) && candidate.length >= 2) {
-          result.points = candidate;
-          occupied.add(candidate, id);
-        }
-        result.diagnostics.push(problem); diagnostics.blocked++; continue;
+    if (wire.manual != null && (!problem || preserveBlockedRoutes)) {
+      const lead = (port, escape) => {
+        const point = escape?.points[1] || escape?.anchor;
+        return point ? { ...port, escapeX: point.x, escapeY: point.y } : port;
+      };
+      path = resolveManualRoute(wire.manual, lead(from, start), lead(to, end), { grid, gap });
+      if (!problem) problem = manualPathProblem(path, { from, to, start, end, rects, occupied, reserved, id });
+    }
+    if (problem) {
+      // Every fixed path retained on screen must reserve that same geometry.
+      if (preserveBlockedRoutes && path) {
+        result.points = path;
+        occupied.add(path, id);
       }
-      path = candidate;
+      result.diagnostics.push(problem); return result;
     }
     const attempts = path ? [] : [
       { margin: 8, includeObstacles: false, allowCrossings: false, limit: 30000 },
@@ -495,7 +497,7 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
     }
     if (!path) {
       result.diagnostics.push(`No non-overlapping route is available. ${lastReason} Move components apart or free a routing lane.`.trim());
-      diagnostics.blocked++; continue;
+      return result;
     }
     result.points = path;
     result.crossings = occupied.crossings(path);
@@ -504,8 +506,15 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
     occupied.add(path, id);
     diagnostics.routed++;
     diagnostics.crossings += result.crossings.length;
+    return result;
   }
-  return { routes, diagnostics, grid, gap };
+  for (const plan of plans) {
+    let route = routePlan(plan, plan.preferred);
+    if (route.status === 'blocked' && plan.preferred !== plan.fine) route = routePlan(plan, plan.fine);
+    if (route.status === 'blocked') diagnostics.blocked++;
+    routes[plan.wire.id] = route;
+  }
+  return { routes, diagnostics, grid: boardGrid, gap: boardGap };
 }
 
 export default routeWires;

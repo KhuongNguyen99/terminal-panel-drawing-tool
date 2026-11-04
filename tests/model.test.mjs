@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_WIDTH, DEVICE_HEIGHT, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, applyCompactLabelSize, applyFourWireOrder, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, geometry, normalizeProject, boundsOf, escapeXML, safeColor } from '../dist/model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_WIDTH, DEVICE_HEIGHT, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT,
+  MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, canAddToProject, positionInBounds, clampPosition,
+  applyCompactLabelSize, applyFourWireOrder, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, geometry, normalizeProject, boundsOf, escapeXML, safeColor } from '../dist/model.js';
 
 const device = (extra = {}) => ({ id: 'device-1', kind: 'device', name: '*v-3501#-y-pos', cable: '17', x: 40, y: 100, wireCount: 2, cableSide: 'left', wireSide: 'right', colors: {}, ...extra });
 const module = (extra = {}) => ({ id: 'module-1', kind: 'module', type: 'AI', name: 'Analog input', slot: '5', rio: 'RIO A', x: 500, y: 30, ...extra });
@@ -445,6 +447,28 @@ test('imported positions and text lengths are bounded, and non-finite coordinate
   assert.equal(result.nodes[0].cable.length, 36);
   assert.equal(result.nodes[1].x, 0);
   assert.equal(result.nodes[1].y, 0);
+});
+
+test('editor and import share the same position limits', () => {
+  assert.deepEqual([POSITION_MIN, POSITION_MAX], [-10000, 20000]);
+  assert.equal(positionInBounds(POSITION_MIN, POSITION_MAX), true);
+  assert.equal(positionInBounds(POSITION_MIN - 1, 0), false);
+  assert.equal(positionInBounds(0, POSITION_MAX + 1), false);
+  assert.equal(positionInBounds('0', 0), false);
+  assert.equal(clampPosition(POSITION_MIN - 10), POSITION_MIN);
+  assert.equal(clampPosition(POSITION_MAX + 10), POSITION_MAX);
+  const edited = project({ nodes: [device({ x: clampPosition(POSITION_MAX + 10), y: clampPosition(POSITION_MIN - 10) }), module()], wires: [] });
+  const reopened = normalize(edited);
+  assert.deepEqual([reopened.nodes[0].x, reopened.nodes[0].y], [edited.nodes[0].x, edited.nodes[0].y]);
+});
+
+test('editor capacity guard uses the project limits enforced by import', () => {
+  const nearLimit = { nodes: Array(MAX_PROJECT_NODES - 1), wires: Array(MAX_PROJECT_WIRES - 1) };
+  assert.equal(canAddToProject(nearLimit, { nodes: 1, wires: 1 }), true);
+  assert.equal(canAddToProject(nearLimit, { nodes: 2 }), false);
+  assert.equal(canAddToProject(nearLimit, { wires: 2 }), false);
+  assert.equal(canAddToProject(nearLimit, { nodes: -1 }), false);
+  assert.equal(canAddToProject(nearLimit, { wires: 0.5 }), false);
 });
 
 test('unsupported formats, versions, item kinds, and oversized projects are rejected', () => {

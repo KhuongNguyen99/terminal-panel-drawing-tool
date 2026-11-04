@@ -6,6 +6,10 @@ import { captureManualRoute, moveWireSegment } from './manual-routing.js';
 import { findConnectorTagPosition, replaceWireWithTags } from './connector-tag-actions.js';
 import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, labelClipboardBounds, prepareLabelPaste } from './label-clipboard.js';
 import { createZip } from './zip.js';
+import { routePath } from './wire-path.js';
+import { wrapText, fitTextAttributes } from './text-layout.js';
+import { loadStoredProject } from './project-storage.js';
+import { MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, canAddToProject, positionInBounds, clampPosition } from './model.js';
 import { synchronizeWireLabelColors, setConnectedWireColor, setConductorColor } from './model.js';
 import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT, tagWidth, tagHeight, tagName, tagNameKey, matchingTags, nextTagName, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
@@ -65,10 +69,10 @@ function exampleProject(full = false) {
   return { version: 1, title: full ? 'RIO A · Slot 5' : 'My wiring project', nodes, wires, settings: { grid: 10, snap: true, defaultWidth: 2.5, autoRoute: false }, labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION };
 }
 
-try {
-  const saved = localStorage.getItem(LOCAL_KEY);
-  project = saved ? normalizeProject(JSON.parse(saved), MODULE_TYPES) : createScheduleProject();
-} catch { project = createScheduleProject(); }
+let storage;
+try { storage = localStorage; } catch { /* Project downloads still work without browser storage. */ }
+const stored = loadStoredProject(storage, LOCAL_KEY, value => normalizeProject(value, MODULE_TYPES), createScheduleProject);
+project = stored.project;
 const labelsResized = applyCompactLabelSize(project);
 
 function notify(message, error = false) {
@@ -78,9 +82,13 @@ function notify(message, error = false) {
 }
 function saveLocal() {
   clearTimeout(autosaveTimer);
+  if (stored.autosaveBlocked || !canAddToProject(project)) {
+    $('#save-status').textContent = stored.autosaveBlocked ? 'Use Save project to keep changes' : 'Project limit reached · save blocked';
+    return;
+  }
   $('#save-status').textContent = 'Saving…';
   autosaveTimer = setTimeout(() => {
-    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(project)); $('#save-status').textContent = 'Saved in this browser'; }
+    try { storage.setItem(LOCAL_KEY, JSON.stringify(project)); $('#save-status').textContent = 'Saved in this browser'; }
     catch { $('#save-status').textContent = 'Save a project file to keep changes'; }
   }, 220);
 }
@@ -95,7 +103,13 @@ function commitTextEdit() {
 }
 function change(callback, message, routeOptions = true) {
   commitTextEdit();
-  const before = clone(project); callback(); synchronizeWireLabelColors(project);
+  const before = clone(project); callback();
+  if (!canAddToProject(project)) {
+    project = before; clearSelection(); render({ preserveRoutes: true });
+    notify(`Use up to ${MAX_PROJECT_NODES} items and ${MAX_PROJECT_WIRES.toLocaleString()} wires per project.`, true);
+    return false;
+  }
+  synchronizeWireLabelColors(project);
   if (JSON.stringify(before) === JSON.stringify(project)) return;
   remember(before); render(routeOptions); saveLocal(); if (message) notify(message);
 }
@@ -147,6 +161,21 @@ function jumpToNode(id) {
 function world(event) { const r = canvas.getBoundingClientRect(); return { x: view.x + (event.clientX - r.left) / view.zoom, y: view.y + (event.clientY - r.top) / view.zoom }; }
 function snapped(value) { return project.settings.snap ? snap(value, project.settings.grid) : Math.round(value); }
 function viewportCenter() { return { x: view.x + stage.clientWidth / (2 * view.zoom), y: view.y + stage.clientHeight / (2 * view.zoom) }; }
+function canAdd(additions) {
+  if (canAddToProject(project, additions)) return true;
+  notify(`Use up to ${MAX_PROJECT_NODES} items and ${MAX_PROJECT_WIRES.toLocaleString()} wires per project. Remove an item or wire before adding more.`, true);
+  return false;
+}
+function moveNodes(positions, dx, dy, snapToGrid = false) {
+  if (!positions.length) return;
+  dx = Math.max(POSITION_MIN - Math.min(...positions.map(n => n.x)), Math.min(dx, POSITION_MAX - Math.max(...positions.map(n => n.x))));
+  dy = Math.max(POSITION_MIN - Math.min(...positions.map(n => n.y)), Math.min(dy, POSITION_MAX - Math.max(...positions.map(n => n.y))));
+  for (const p of positions) {
+    const n = nodeById(p.id); if (!n) continue;
+    n.x = clampPosition(snapToGrid ? snapped(p.x + dx) : p.x + dx);
+    n.y = clampPosition(snapToGrid ? snapped(p.y + dy) : p.y + dy);
+  }
+}
 
 function syncView() {
   const w = Math.max(1, stage.clientWidth), h = Math.max(1, stage.clientHeight);
@@ -225,6 +254,11 @@ function portMarkup(p, localX, localY, exporting = false) {
 
 const portLabelMeasure = document.createElement('canvas').getContext('2d');
 portLabelMeasure.font = '14px Arial';
+const headerTextMeasure = document.createElement('canvas').getContext('2d');
+function headerTextWidth(text, size) {
+  headerTextMeasure.font = `700 ${size}px Arial`;
+  return headerTextMeasure.measureText(text).width;
+}
 
 function calloutArrow(points, appearance = null) {
   const target = points.at(-1), previous = points.at(-2);
@@ -248,13 +282,17 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
   const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
   const headerCenterY = header.y + header.height / 2;
   const instance = [n.rio, n.slot !== '' ? `Slot ${n.slot}` : ''].filter(Boolean).join(' · ');
+  const name = n.name || t.label, available = header.width - 34 - (instance ? 12 : 0);
+  const nameWidth = Math.min(headerTextWidth(name, 13), Math.max(available * .4, available - headerTextWidth(instance, 16)));
+  const nameFit = fitTextAttributes(name, nameWidth, text => headerTextWidth(text, 13));
+  const instanceFit = fitTextAttributes(instance, available - nameWidth, text => headerTextWidth(text, 16));
   const selectedClass = !exporting && selected.has(n.id) ? 'is-selected' : '';
   let out = `<g class="module-node ${selectedClass}" ${exporting ? '' : `data-node="${esc(n.id)}"`} transform="translate(${n.x} ${n.y})">`;
   let pairLabels = '';
   const selectionTop = Math.min(0, header.y) - 8;
   if (!exporting) out += `<rect class="selection-ring" x="-8" y="${selectionTop}" width="${t.width + 16}" height="${Math.max(t.height, header.y + header.height) - selectionTop + 8}" rx="12" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" opacity="${selectedClass ? 1 : 0}" pointer-events="none"/>`;
   out += `<image href="${esc(embedded[n.type] || t.image)}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" preserveAspectRatio="none" ${exporting ? '' : 'data-drag-handle="true"'} />`;
-  out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + 5}" fill="#20303d" font-size="13" font-weight="700">${esc(n.name || t.label)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + 5}" text-anchor="end" fill="#20303d" font-size="16" font-weight="700">${esc(instance)}</text></g>`;
+  out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><title>${esc([name, instance].filter(Boolean).join(' · '))}</title><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + 5}" fill="#20303d" font-size="13" font-weight="700"${nameFit}>${esc(name)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + 5}" text-anchor="end" fill="#20303d" font-size="16" font-weight="700"${instanceFit}>${esc(instance)}</text></g>`;
   for (const p of t.ports) {
     if (p.calloutPoints?.length > 1) {
       const label = modulePortLabel(n, p);
@@ -407,22 +445,6 @@ function wireLabelMarkup(n, exporting = false) {
   return out + '</g>';
 }
 
-function routePath(points, crossings = []) {
-  if (!points?.length) return '';
-  let d = `M${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1], b = points[i], horizontal = Math.abs(a.y - b.y) < .01, vertical = Math.abs(a.x - b.x) < .01;
-    const length = Math.hypot(b.x - a.x, b.y - a.y), dx = Math.sign(b.x - a.x), dy = Math.sign(b.y - a.y);
-    const cross = (horizontal || vertical) ? crossings.filter(p => (horizontal ? Math.abs(p.y - a.y) < .5 && p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x) : Math.abs(p.x - a.x) < .5 && p.y > Math.min(a.y, b.y) && p.y < Math.max(a.y, b.y)) && Math.hypot(p.x - a.x, p.y - a.y) > 9 && Math.hypot(p.x - b.x, p.y - b.y) > 9 && Math.hypot(p.x - a.x, p.y - a.y) < length).sort((p, q) => Math.hypot(p.x - a.x, p.y - a.y) - Math.hypot(q.x - a.x, q.y - a.y)) : [];
-    let previous = -Infinity;
-    for (const p of cross) {
-      const dist = Math.hypot(p.x - a.x, p.y - a.y); if (dist - previous < 15) continue; previous = dist;
-      d += horizontal ? ` L${p.x - dx * 6} ${p.y} Q${p.x} ${p.y - 10} ${p.x + dx * 6} ${p.y}` : ` L${p.x} ${p.y - dy * 6} Q${p.x - 10} ${p.y} ${p.x} ${p.y + dy * 6}`;
-    }
-    d += ` L${b.x} ${b.y}`;
-  }
-  return d;
-}
 function wireSegments(points = []) {
   return points.slice(1).map((b, index) => {
     const a = points[index], horizontal = Math.abs(a.y - b.y) < .00001;
@@ -441,9 +463,9 @@ function nearestWireSegment(points, pos, horizontal = null) {
   }
   return best;
 }
-function editPort(p) {
+function editPort(p, route) {
   if (!p) return null;
-  const grid = routing.grid ?? project.settings.grid, gap = routing.gap ?? Math.max(10, grid);
+  const grid = route?.grid ?? routing.grid ?? project.settings.grid, gap = route?.gap ?? routing.gap ?? Math.max(10, grid);
   const widest = project.wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
   const padding = Math.max(gap / 2, widest / 2 + 2);
   const vertical = p.side === 'top' || p.side === 'bottom';
@@ -460,7 +482,8 @@ function portStub(p, distance = 22) {
   return `M${p.x} ${p.y} ${vertical ? 'v' : 'h'}${sign * distance}`;
 }
 function segmentOptions(w) {
-  return { grid: routing.grid ?? project.settings.grid, snapGrid: project.settings.grid, snap: project.settings.snap, gap: routing.gap ?? Math.max(10, project.settings.grid), from: editPort(geo.ports[w.from]), to: editPort(geo.ports[w.to]) };
+  const route = routing.routes[w.id];
+  return { grid: route?.grid ?? routing.grid ?? project.settings.grid, snapGrid: project.settings.grid, snap: project.settings.snap, gap: route?.gap ?? routing.gap ?? Math.max(10, project.settings.grid), from: editPort(geo.ports[w.from], route), to: editPort(geo.ports[w.to], route) };
 }
 function commitWireSegment(wireId, points, before = clone(project), movedAt = null) {
   const w = project.wires.find(wire => wire.id === wireId), route = routing.routes[wireId];
@@ -766,6 +789,7 @@ function finishWire(id) {
   const previous = occupied(from.id), taken = occupied(to.id, previous?.id);
   if (taken && !to.allowMultiple && !to.common) { notify('That terminal is occupied. Select its wire to reconnect or delete it.', true); return false; }
   const idNew = previous?.id || makeId('wire');
+  if (!previous && !canAdd({ wires: 1 })) return false;
   change(() => {
     if (previous) { previous.from = from.id; previous.to = to.id; delete previous.manual; delete previous.savedRoute; }
     else project.wires.push({ id: idNew, from: from.id, to: to.id, color: safeColor(from.color || to.color), width: project.settings.defaultWidth });
@@ -880,7 +904,7 @@ canvas.addEventListener('pointermove', event => {
     const dx = pos.x - gesture.start.x, dy = pos.y - gesture.start.y;
     if (Math.hypot(dx, dy) > 2 / view.zoom) gesture.moved = true;
     if (gesture.moved) {
-      for (const p of gesture.positions) { const n = nodeById(p.id); if (n) { n.x = snapped(p.x + dx); n.y = snapped(p.y + dy); } }
+      moveNodes(gesture.positions, dx, dy, true);
       scheduleRoutes();
     }
     return;
@@ -927,12 +951,13 @@ canvas.addEventListener('wheel', event => { event.preventDefault(); if (['resize
 canvas.addEventListener('dblclick', event => { if (event.target.closest('[data-resize]')) return; const n = event.target.closest('[data-node]'); if (n) { selected = new Set([n.dataset.node]); selectedWire = null; renderInspector(); const input = $('[data-prop="name"]'); input?.focus(); input?.select(); } });
 
 function findFreePosition(node, desired) {
+  desired = { x: clampPosition(snapped(desired.x)), y: clampPosition(snapped(desired.y)) };
   const type = node.kind === 'module' ? MODULE_TYPES[node.type] : null;
   const size = nodeSize(node), w = size.width;
   const top = type ? Math.max(0, -(type.header?.y ?? -36)) : 0;
   const h = type ? Math.max(type.height, type.header ? type.header.y + type.header.height : 0) + top : size.height;
   const obstacles = geometry(project.nodes, MODULE_TYPES).obstacles;
-  const free = (x, y) => obstacles.every(r => x + w + 45 < r.x || x - 45 > r.x + r.width || y - top + h + 45 < r.y || y - top - 45 > r.y + r.height);
+  const free = (x, y) => positionInBounds(x, y) && obstacles.every(r => x + w + 45 < r.x || x - 45 > r.x + r.width || y - top + h + 45 < r.y || y - top - 45 > r.y + r.height);
   const candidates = [];
   for (let ring = 0; ring <= 12; ring++) {
     for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) {
@@ -943,24 +968,31 @@ function findFreePosition(node, desired) {
     if (candidates.length) return candidates.sort((a, b) => a.distance - b.distance)[0];
   }
   const bounds = boundsOf(project.nodes, MODULE_TYPES);
-  return { x: snapped(bounds.x + bounds.width + 100), y: snapped(desired.y) };
+  const fallback = { x: snapped(bounds.x + bounds.width + 100), y: snapped(desired.y) };
+  return free(fallback.x, fallback.y) ? fallback : null;
 }
 function addModule(type) {
+  if (!canAdd({ nodes: 1 })) return;
   const c = viewportCenter(), n = newModule(type);
-  Object.assign(n, findFreePosition(n, { x: c.x - MODULE_TYPES[type].width / 2, y: c.y - MODULE_TYPES[type].height / 2 }));
+  const position = findFreePosition(n, { x: c.x - MODULE_TYPES[type].width / 2, y: c.y - MODULE_TYPES[type].height / 2 });
+  if (!position) return notify('No clear space within the canvas limits. Pan to an open area, then add the module.', true);
+  Object.assign(n, position);
   change(() => { project.nodes.push(n); selected = new Set([n.id]); selectedWire = null; }, `${MODULE_TYPES[type].label} module added`);
   fitBoard();
 }
 function addDevice(count) {
+  if (!canAdd({ nodes: 1 })) return;
   const c = viewportCenter(), n = newDevice(count);
-  Object.assign(n, findFreePosition(n, { x: c.x - deviceWidth(n) / 2, y: c.y - deviceHeight(n) / 2 }));
+  const position = findFreePosition(n, { x: c.x - deviceWidth(n) / 2, y: c.y - deviceHeight(n) / 2 });
+  if (!position) return notify('No clear space within the canvas limits. Pan to an open area, then add the device.', true);
+  Object.assign(n, position);
   change(() => { project.nodes.push(n); selected = new Set([n.id]); selectedWire = null; }, `${count}-wire device added`);
   fitBoard();
   $('[data-prop="name"]')?.focus(); $('[data-prop="name"]')?.select();
 }
 function addWireLabel(name = 'Wire label', extra = {}) {
   commitTextEdit();
-  if (project.nodes.length >= 500) return notify('This project already has 500 items. Remove an item before adding a label.', true);
+  if (!canAdd({ nodes: 1 })) return;
   const c = viewportCenter(), n = newWireLabel(name, extra), width = deviceWidth(n), height = deviceHeight(n);
   const position = findConnectorTagPosition({ nodes: project.nodes, types: MODULE_TYPES,
     desired: { x: c.x - width / 2, y: c.y - height / 2 }, width, height,
@@ -973,7 +1005,7 @@ function addWireLabel(name = 'Wire label', extra = {}) {
 }
 function addTag(name = nextTagName(project.nodes), wireSide = 'right', size = {}) {
   commitTextEdit();
-  if (project.nodes.length >= 500) return notify('This project already has 500 items. Remove an item before adding another tag.', true);
+  if (!canAdd({ nodes: 1 })) return;
   const c = viewportCenter(), n = newTag(name, { wireSide, ...size });
   const width = tagWidth(n), height = tagHeight(n);
   const position = findConnectorTagPosition({ nodes: project.nodes, types: MODULE_TYPES,
@@ -1011,9 +1043,10 @@ function deleteSelection() {
 }
 function duplicateSelection() {
   const copy = project.nodes.filter(n => selected.has(n.id)); if (!copy.length) return;
+  if (!canAdd({ nodes: copy.length })) return;
   if (copy.length === 1 && copy[0].kind === 'tag') return addTag(copy[0].name, copy[0].wireSide, { width: tagWidth(copy[0]), height: tagHeight(copy[0]) });
   if (copy.length === 1 && copy[0].kind === 'wire-label') return addWireLabel(copy[0].name, { width: deviceWidth(copy[0]), height: deviceHeight(copy[0]), color: copy[0].color });
-  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : n.kind === 'wire-label' ? 'label' : 'mod'), x: n.x + 40, y: n.y + 40 }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
+  change(() => { const newIds = []; for (const n of copy) { const duplicate = { ...clone(n), id: makeId(n.kind === 'device' ? 'dev' : n.kind === 'tag' ? 'tag' : n.kind === 'wire-label' ? 'label' : 'mod'), x: clampPosition(n.x + 40), y: clampPosition(n.y + 40) }; delete duplicate.assignment; delete duplicate.scheduleId; project.nodes.push(duplicate); newIds.push(duplicate.id); } selected = new Set(newIds); }, 'Selection duplicated');
 }
 
 const LABEL_CLIPBOARD_MIME = 'application/x-wirebench-labels+json';
@@ -1240,7 +1273,11 @@ function download(blob, filename) {
   const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
 function fileName(extension, title = project.title) { return (title.replace(/[^a-zA-Z0-9-_ .]/g, '').trim().replace(/\s+/g, '-') || 'wiring-project') + extension; }
-function saveProject() { download(new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }), fileName('.wirebench.json')); notify('Editable project file saved'); }
+function saveProject() {
+  if (!canAdd({})) return;
+  download(new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }), fileName('.wirebench.json'));
+  notify('Editable project file saved');
+}
 $('#project-file').addEventListener('change', async event => {
   const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
   try {
@@ -1377,13 +1414,17 @@ function pngExportPlan(scope) {
 }
 function svgForExport(plan, options, embedded) {
   const { nodes, wires, title: exportTitle, bounds: b } = plan;
-  const { transparent, title, margin, scale } = options, titleHeight = title ? 42 : 0;
+  const { transparent, title, margin, scale } = options;
+  const titleWidth = Math.max(1, b.width - 8);
+  const titleLines = title ? wrapText(exportTitle, titleWidth, text => headerTextWidth(text, 22)) : [];
+  const titleHeight = titleLines.length ? titleLines.length * 28 + 14 : 0;
   const width = Math.ceil(b.width + 2 * margin), height = Math.ceil(b.height + 2 * margin + titleHeight);
   const actualScale = Math.min(scale, 12000 / width, 12000 / height, Math.sqrt(48000000 / (width * height)));
   const x = b.x - margin, y = b.y - margin - titleHeight;
   const visibleWireIds = new Set(wires.map(w => w.id));
   const content = wires.map(w => wireMarkup(w, true, visibleWireIds)).join('') + nodes.map(n => nodeMarkup(n, true, embedded)).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(width * actualScale)}" height="${Math.ceil(height * actualScale)}" viewBox="${x} ${y} ${width} ${height}" font-family="Arial, Helvetica, sans-serif">${transparent ? '' : `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#ffffff"/>`}${title ? `<text x="${b.x}" y="${b.y - 20}" font-size="22" font-weight="700" fill="#20303d">${esc(exportTitle)}</text>` : ''}${content}</svg>`;
+  const titleMarkup = titleLines.map((line, i) => `<text x="${b.x + 4}" y="${b.y - titleHeight + 22 + i * 28}" font-size="22" font-weight="700" fill="#20303d"${fitTextAttributes(line, titleWidth, text => headerTextWidth(text, 22))}>${esc(line)}</text>`).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(width * actualScale)}" height="${Math.ceil(height * actualScale)}" viewBox="${x} ${y} ${width} ${height}" font-family="Arial, Helvetica, sans-serif">${transparent ? '' : `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#ffffff"/>`}${titleMarkup}${content}</svg>`;
   return { svg, width: Math.ceil(width * actualScale), height: Math.ceil(height * actualScale) };
 }
 async function renderPNG(plan, options, embedded, assertCurrent) {
@@ -1463,6 +1504,9 @@ async function exportPNG() {
 
 const actions = {
   undo, redo, 'save-project': saveProject, 'open-project': () => $('#project-file').click(),
+  'download-recovery': () => {
+    if (stored.recovery) download(new Blob([stored.recovery.raw], { type: 'application/json' }), 'wirebench-recovery.wirebench.json');
+  },
   'add-2wire': () => addDevice(2), 'add-4wire': () => addDevice(4), 'add-wire-label': () => addWireLabel(),
   'add-tag': () => addTag(), 'add-matching-tag': addMatchingTag, 'replace-with-tags': replaceSelectedWireWithTags,
   'zoom-in': () => zoomBy(1.2), 'zoom-out': () => zoomBy(1 / 1.2), fit: () => focusModule(''),
@@ -1476,7 +1520,8 @@ const actions = {
   'full-schedule': () => {
     commitTextEdit();
     if (!scheduleWorkspace) {
-      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(project)); } catch { return notify('Save a project file before switching workspaces; browser storage is full.', true); }
+      if (stored.autosaveBlocked || !canAdd({})) return notify('Use Save project before switching workspaces; the previous browser save is preserved.', true);
+      try { storage.setItem(LOCAL_KEY, JSON.stringify(project)); } catch { return notify('Save a project file before switching workspaces; browser storage is full.', true); }
       location.assign('?project=rio-schedule'); return;
     }
     if (project.sourceSchedule !== 'rio-schedule-v1') change(() => { project = createScheduleProject(); clearSelection(); }, 'Full RIO schedule loaded · Undo to restore');
@@ -1562,7 +1607,7 @@ document.addEventListener('keydown', event => {
   else if (['Delete', 'Backspace'].includes(event.key)) { event.preventDefault(); deleteSelection(); }
   else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) && selected.size) {
     event.preventDefault(); const step = project.settings.grid * (event.shiftKey ? 5 : 1);
-    change(() => { for (const n of project.nodes.filter(n => selected.has(n.id))) { if (event.key === 'ArrowLeft') n.x -= step; if (event.key === 'ArrowRight') n.x += step; if (event.key === 'ArrowUp') n.y -= step; if (event.key === 'ArrowDown') n.y += step; } });
+    change(() => moveNodes(project.nodes.filter(n => selected.has(n.id)), event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0, event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0));
   } else if (event.key.toLowerCase() === 'f') focusModule('');
   else if (event.key.toLowerCase() === 'v') { tool = 'select'; syncControls(); }
   else if (event.key.toLowerCase() === 'h') { tool = 'pan'; syncControls(); }
@@ -1576,6 +1621,12 @@ window.addEventListener('blur', () => { if (gesture?.kind === 'wire-segment') ca
 new ResizeObserver(() => { if (fitOnce && stage.clientWidth > 10) { fitOnce = false; initialView(); } else syncView(); }).observe(stage);
 
 render({ preserveRoutes: true }); saveLocal();
+if (stored.recovery) {
+  $('#recovery-notice').hidden = false;
+  $('#recovery-message').textContent = stored.autosaveBlocked
+    ? 'The previous browser save could not be opened and is preserved. Use Save project to keep new work.'
+    : 'The previous browser save could not be opened. Its original data has been preserved for recovery.';
+}
 requestAnimationFrame(initialView);
 $('#status-message').textContent = 'Drag to arrange · click a conductor and a channel to connect · scroll to zoom';
 if (labelsResized) notify('All device labels set to 210 × 60 px');

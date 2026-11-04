@@ -40,7 +40,8 @@ test('terminal bank has twenty complete rows with two independent connections pe
         assert.equal(p.y % 20, 0);
         assert.equal(p.showLabel, false, 'canvas does not show color names');
         assert.doesNotMatch(p.label, /white|black/i);
-        assert.match(p.label, new RegExp(`^Row ${channel + 1} · `));
+        assert.equal(p.label, `S${channel + 1}`, 'both connectors and sides share the row name');
+        assert.equal(p.connectionLabel, `S${channel + 1} · ${side === 'left' ? 'Left' : 'Right'} · ${p.signal === 'inner' ? 'Inner' : 'Middle'}`);
       }
     }
   }

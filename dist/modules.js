@@ -170,7 +170,8 @@ const terminalBankPorts = ['left', 'right'].flatMap(side => terminalBankRows.fla
   const pinY = terminalBankBody.y + sourceY * terminalBankScale;
   return Object.freeze({
     id: `${side}-${channel + 1}-${signal}`,
-    label: `Row ${channel + 1} · ${left ? 'Left' : 'Right'} · ${inner ? 'Inner' : 'Middle'}`,
+    label: `S${channel + 1}`,
+    connectionLabel: `S${channel + 1} · ${left ? 'Left' : 'Right'} · ${inner ? 'Inner' : 'Middle'}`,
     side, channel, signal, x, y, pinX, pinY,
     targetColumn: left ? (inner ? 3 : 2) : (inner ? 4 : 5),
     showLabel: false, hitRadius: 8,
@@ -206,7 +207,7 @@ export const MODULE_TYPES = Object.freeze({
       imageAlt: 'Ten upright DIN resistor rail terminals, matching the approved flat-color artwork',
     }),
   DIN_TERMINAL: template('DIN_TERMINAL', 'DIN Solenoid Rail Terminal Block', '', 'assets/module-din-terminal.png', terminalBankBody, terminalBankPorts,
-    'Twenty rows split into left and right sections. Each section has an upper connection to its inner port and a lower connection to its middle port.', {
+    'Twenty rows named S1–S20 from top to bottom, with the same name on both sides. Each side pairs an upper connection to its inner port with a lower connection to its middle port.', {
       width: 860, height: 960, connectorRole: 'terminal', terminalLayout: 'split-rows', rowCount: 20,
       header: Object.freeze({ x: 12, y: -52, width: 836, height: 32 }),
       routingObstacles: Object.freeze([

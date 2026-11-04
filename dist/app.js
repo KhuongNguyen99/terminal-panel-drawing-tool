@@ -250,6 +250,7 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
   const instance = [n.rio, n.slot !== '' ? `Slot ${n.slot}` : ''].filter(Boolean).join(' · ');
   const selectedClass = !exporting && selected.has(n.id) ? 'is-selected' : '';
   let out = `<g class="module-node ${selectedClass}" ${exporting ? '' : `data-node="${esc(n.id)}"`} transform="translate(${n.x} ${n.y})">`;
+  let pairLabels = '';
   const selectionTop = Math.min(0, header.y) - 8;
   if (!exporting) out += `<rect class="selection-ring" x="-8" y="${selectionTop}" width="${t.width + 16}" height="${Math.max(t.height, header.y + header.height) - selectionTop + 8}" rx="12" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" opacity="${selectedClass ? 1 : 0}" pointer-events="none"/>`;
   out += `<image href="${esc(embedded[n.type] || t.image)}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" preserveAspectRatio="none" ${exporting ? '' : 'data-drag-handle="true"'} />`;
@@ -260,7 +261,7 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
       out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;
       if (t.terminalLayout === 'split-rows' && p.signal === 'inner') {
         const left = p.side === 'left';
-        out += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 10}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
+        pairLabels += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 10}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
       }
       out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
       continue;
@@ -300,7 +301,7 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
     out += `<text class="port-label" x="${px}" y="${y + 4}" text-anchor="${left ? 'start' : 'end'}" font-family="Arial, sans-serif" font-size="14" fill="#263947">${esc(label)}</text><path class="port-arrow" d="M${lineStart} ${y} L${baseX} ${baseY}" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/><path class="port-arrowhead" d="M${targetX} ${pinY} L${baseX - uy * 5} ${baseY + ux * 5} L${baseX + uy * 5} ${baseY - ux * 5} Z" fill="#dc2626"/>`;
     out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
   }
-  out += '</g>'; return out;
+  out += pairLabels + '</g>'; return out;
 }
 const tagTextMeasure = document.createElement('canvas').getContext('2d');
 function tagMarkup(n, exporting = false) {

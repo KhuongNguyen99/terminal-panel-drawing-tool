@@ -401,6 +401,15 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
   grid = finite(Number(grid)) ? Math.max(2, Math.min(100, Number(grid))) : 10;
   gap = finite(Number(gap)) ? Math.max(0, Number(gap)) : grid;
   const portMap = normalizePorts(ports), routes = {};
+  // Dense terminal pairs need separate lanes even on a coarser placement grid.
+  for (const wire of wires) for (const endpoint of [wire.from, wire.to]) {
+    const port = typeof endpoint === 'object' && endpoint !== null ? endpoint : portMap.get(endpoint);
+    if (finite(port?.routingPitch) && port.routingPitch >= 2) {
+      const aligned = eq(Number(port.x) % port.routingPitch, 0) && eq(Number(port.y) % port.routingPitch, 0);
+      grid = Math.min(grid, aligned ? port.routingPitch : Math.max(2, port.routingPitch / 2));
+      gap = Math.min(gap, port.routingPitch);
+    }
+  }
   const widest = wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
   const padding = Math.max(gap / 2, widest / 2 + 2);
   const rects = normalizeRects(obstacles, padding);
@@ -461,7 +470,10 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
         // Fixed paths remain visible when blocked. Keep their lanes occupied
         // as well, so a new automatic wire cannot be laid over the geometry
         // that independent-routing will preserve for the user to adjust.
-        if (preserveBlockedRoutes && Array.isArray(candidate) && candidate.length >= 2) occupied.add(candidate, id);
+        if (preserveBlockedRoutes && Array.isArray(candidate) && candidate.length >= 2) {
+          result.points = candidate;
+          occupied.add(candidate, id);
+        }
         result.diagnostics.push(problem); diagnostics.blocked++; continue;
       }
       path = candidate;
@@ -493,7 +505,7 @@ export function routeWires({ wires = [], ports = [], obstacles = [], grid = 10, 
     diagnostics.routed++;
     diagnostics.crossings += result.crossings.length;
   }
-  return { routes, diagnostics };
+  return { routes, diagnostics, grid, gap };
 }
 
 export default routeWires;

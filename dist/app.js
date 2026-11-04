@@ -260,8 +260,8 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
       const label = modulePortLabel(n, p);
       if (t.terminalLayout === 'split-rows' && p.signal === 'inner') {
         const left = p.side === 'left';
-        out += `<rect class="terminal-pair-shell" x="${p.x - (left ? 10 : 94)}" y="${p.y - 6}" width="104" height="32" rx="6" fill="#b91c1c" fill-opacity=".5" stroke="#b91c1c" stroke-opacity=".75" stroke-width="1" pointer-events="none"/>`;
-        pairLabels += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 10}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
+        out += `<rect class="terminal-pair-shell" x="${p.x - (left ? 10 : 94)}" y="${p.y - 11}" width="104" height="32" rx="6" fill="#b91c1c" fill-opacity=".5" stroke="#b91c1c" stroke-opacity=".75" stroke-width="1" pointer-events="none"/>`;
+        pairLabels += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 5}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
       }
       out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;
       out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
@@ -443,7 +443,7 @@ function nearestWireSegment(points, pos, horizontal = null) {
 }
 function editPort(p) {
   if (!p) return null;
-  const grid = project.settings.grid, gap = Math.max(10, grid);
+  const grid = routing.grid ?? project.settings.grid, gap = routing.gap ?? Math.max(10, grid);
   const widest = project.wires.reduce((m, w) => Math.max(m, Number(w.width) || 2), 2);
   const padding = Math.max(gap / 2, widest / 2 + 2);
   const vertical = p.side === 'top' || p.side === 'bottom';
@@ -460,7 +460,7 @@ function portStub(p, distance = 22) {
   return `M${p.x} ${p.y} ${vertical ? 'v' : 'h'}${sign * distance}`;
 }
 function segmentOptions(w) {
-  return { grid: project.settings.grid, snap: project.settings.snap, gap: Math.max(10, project.settings.grid), from: editPort(geo.ports[w.from]), to: editPort(geo.ports[w.to]) };
+  return { grid: routing.grid ?? project.settings.grid, snapGrid: project.settings.grid, snap: project.settings.snap, gap: routing.gap ?? Math.max(10, project.settings.grid), from: editPort(geo.ports[w.from]), to: editPort(geo.ports[w.to]) };
 }
 function commitWireSegment(wireId, points, before = clone(project), movedAt = null) {
   const w = project.wires.find(wire => wire.id === wireId), route = routing.routes[wireId];

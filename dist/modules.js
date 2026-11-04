@@ -164,7 +164,7 @@ const terminalBankArrowStyle = Object.freeze(Object.fromEntries(['inner', 'middl
 })])));
 const terminalBankPorts = ['left', 'right'].flatMap(side => terminalBankRows.flatMap((sourceY, channel) => ['inner', 'middle'].map(signal => {
   const left = side === 'left', inner = signal === 'inner';
-  const x = left ? 40 : 820, y = (inner ? 140 : 160) + channel * 40;
+  const x = left ? 40 : 820, y = (inner ? 140 : 150) + channel * 40;
   const sourceX = left ? (inner ? 460 : 300) : (inner ? 657 : 811);
   const pinX = terminalBankBody.x + sourceX * terminalBankScale;
   const pinY = terminalBankBody.y + sourceY * terminalBankScale;
@@ -174,7 +174,7 @@ const terminalBankPorts = ['left', 'right'].flatMap(side => terminalBankRows.fla
     connectionLabel: `S${channel + 1} · ${left ? 'Left' : 'Right'} · ${inner ? 'Inner' : 'Middle'}`,
     side, channel, signal, x, y, pinX, pinY,
     targetColumn: left ? (inner ? 3 : 2) : (inner ? 4 : 5),
-    showLabel: false, hitRadius: 8,
+    showLabel: false, hitRadius: 4.8, routingPitch: 10,
     group: `${left ? 'Left' : 'Right'} section`,
     calloutPoints: Object.freeze([
       Object.freeze({ x, y }),

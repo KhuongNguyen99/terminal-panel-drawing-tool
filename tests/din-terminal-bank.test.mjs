@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { MODULE_TYPES } from '../dist/modules.js';
 import { FOUR_WIRE_ORDER_REVISION, boundsOf, compatiblePorts, geometry, normalizeProject } from '../dist/model.js';
 import { routeWires } from '../dist/router.js';
+import { routeWithPreferences } from '../dist/independent-routing.js';
+import { captureManualRoute, moveWireSegment } from '../dist/manual-routing.js';
 
 const type = MODULE_TYPES.DIN_TERMINAL;
 const bank = (extra = {}) => ({ id: 'bank', kind: 'module', type: 'DIN_TERMINAL', name: 'DIN Solenoid Rail Terminal Block', rio: 'Panel A', slot: '', x: 400, y: 100, ...extra });
@@ -33,11 +35,12 @@ test('terminal bank has twenty complete rows with two independent connections pe
       assert.equal(upper.id, `${side}-${channel + 1}-inner`);
       assert.equal(lower.id, `${side}-${channel + 1}-middle`);
       assert.equal(upper.x, lower.x, 'the two connectors stack vertically');
-      assert.equal(lower.y - upper.y, 20, 'neighboring routes retain distinct grid lanes');
+      assert.equal(upper.y, 140 + channel * 40, 'white connector stays in place');
+      assert.equal(lower.y, 150 + channel * 40, 'black connector moves up one 10-unit grid step');
       assert.ok(upper.y + upper.hitRadius < lower.y - lower.hitRadius, 'click targets do not overlap');
       for (const p of [upper, lower]) {
         assert.equal(p.x % 20, 0);
-        assert.equal(p.y % 20, 0);
+        assert.equal(p.y % 10, 0);
         assert.equal(p.showLabel, false, 'canvas does not show color names');
         assert.doesNotMatch(p.label, /white|black/i);
         assert.equal(p.label, `S${channel + 1}`, 'both connectors and sides share the row name');
@@ -50,7 +53,7 @@ test('terminal bank has twenty complete rows with two independent connections pe
     const ports = type.ports.filter(p => p.side === side).sort((a, b) => a.y - b.y);
     assert.equal(ports.length, 40);
     for (let i = 1; i < ports.length; i++) {
-      assert.ok(ports[i].y - ports[i - 1].y >= 20);
+      assert.ok(ports[i].y - ports[i - 1].y >= 10);
       assert.ok(ports[i].y - ports[i - 1].y > ports[i].hitRadius + ports[i - 1].hitRadius);
     }
   }
@@ -169,7 +172,7 @@ test('all eighty connections have distinct outward routing lanes at grids 10 and
     wires.push(wire(`wire-${p.localId}`, id, p.id));
   }
   for (const grid of [10, 20]) {
-    const routed = routeWires({ ...geo, wires, grid });
+    const routed = routeWires({ ...geo, wires, grid, gap: Math.max(10, grid) });
     assert.equal(routed.diagnostics.blocked, 0, `grid ${grid}: every connector remains reachable`);
     assert.equal(routed.diagnostics.crossings, 0);
     assert.equal(routed.diagnostics.sharedSegments, 0, 'adjacent dots never collapse onto one escape lane');
@@ -180,4 +183,55 @@ test('all eighty connections have distinct outward routing lanes at grids 10 and
       assert.ok(r.points.every(p => destination.side === 'left' ? p.x <= destination.x : p.x >= destination.x), `${w.id} stays outside the bank`);
     }
   }
+});
+
+test('saved and manual black cables reattach after the one-step port move on every grid', () => {
+  for (const grid of [5, 10, 20]) for (const x of [400, 405, 410]) for (const y of [100, 105, 110, 115]) {
+    const geo = geometry([bank({ x, y })], MODULE_TYPES);
+    const legacyPorts = structuredClone(geo.ports), wires = [];
+    for (const port of Object.values(geo.ports)) {
+      const old = legacyPorts[port.id];
+      if (port.signal === 'middle') old.y += 10;
+      delete old.routingPitch;
+      const id = `source-${port.localId}`;
+      const source = { id, nodeId: id, kind: 'device', side: port.side === 'left' ? 'right' : 'left', x: port.x + (port.side === 'left' ? -200 : 200), y: old.y };
+      geo.ports[id] = source;
+      legacyPorts[id] = source;
+      wires.push(wire(`wire-${port.localId}`, id, port.id));
+    }
+    const old = routeWires({ ...geo, ports: legacyPorts, wires, grid, gap: Math.max(10, grid) });
+    assert.equal(old.diagnostics.blocked, 0);
+    for (const [i, w] of wires.entries()) {
+      w[i % 2 ? 'manual' : 'savedRoute'] = captureManualRoute(old.routes[w.id].points, legacyPorts[w.from], legacyPorts[w.to]);
+    }
+    const reopened = routeWithPreferences({ ...geo, wires, grid, gap: Math.max(10, grid) });
+    assert.equal(reopened.diagnostics.blocked, 0, `grid ${grid}: old paths remain attached`);
+    assert.equal(reopened.diagnostics.visited, 0, 'saved bends do not trigger a new route search');
+    for (const w of wires) {
+      const destination = geo.ports[w.to];
+      assert.deepEqual(reopened.routes[w.id].points.at(-1), { x: destination.x, y: destination.y });
+      if (destination.signal === 'inner') assert.deepEqual(reopened.routes[w.id].points, old.routes[w.id].points, 'white paths stay unchanged');
+    }
+  }
+});
+
+test('coarse placement snapping keeps short wire bends on the finer routing lanes', () => {
+  const from = { x: 0, y: 0, side: 'right', escapeX: 10 };
+  const to = { x: 200, y: 20, side: 'left', escapeX: 190 };
+  const points = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }, { x: 200, y: 20 }];
+  const moved = moveWireSegment(points, 0, -11, { from, to, grid: 10, snapGrid: 20, gap: 10 });
+  assert.deepEqual(moved, [from, { x: 10, y: 0 }, { x: 10, y: -20 }, { x: 20, y: -20 }, { x: 20, y: 20 }, to].map(({x,y}) => ({x,y})));
+});
+
+test('blocked dense-terminal cables display the same attached path that was reserved', () => {
+  const from = { id: 'source', nodeId: 'source', x: 0, y: 270, side: 'right' };
+  const to = { id: 'black', nodeId: 'bank', x: 442, y: 260, side: 'left', routingPitch: 10 };
+  const manual = captureManualRoute([{x:0,y:270},{x:100,y:270},{x:100,y:240},{x:420,y:240},{x:420,y:270},{x:442,y:270}], from, {...to,y:270});
+  const input = { ports: [from,to], wires: [wire('black-cable','source','black',{manual})], grid:20, gap:20,
+    obstacles:[{id:'bank',nodeId:'bank',x:442,y:100,width:780,height:960},{id:'block',x:200,y:230,width:40,height:20}] };
+  const reserved = routeWires({...input,preserveBlockedRoutes:true});
+  const displayed = routeWithPreferences(input);
+  assert.equal(reserved.routes['black-cable'].status,'blocked');
+  assert.equal(reserved.routes['black-cable'].points.at(-2).x,435);
+  assert.deepEqual(displayed.routes['black-cable'].points,reserved.routes['black-cable'].points);
 });

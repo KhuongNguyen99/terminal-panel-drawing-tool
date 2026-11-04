@@ -36,7 +36,7 @@ export function routeWithPreferences({
       // A component can be moved across an existing wire. Keep that wire's
       // geometry visible with its blocked status instead of erasing it or
       // choosing a new route. The caller can show the conflict and reject export.
-      if (wire.manual) route.points = resolveManualRoute(wire.manual, portFor(wire.from), portFor(wire.to), { grid, gap }) || [];
+      if (wire.manual && !route.points.length) route.points = resolveManualRoute(wire.manual, portFor(wire.from), portFor(wire.to), { grid: result.grid, gap: result.gap }) || [];
       continue;
     }
     const saved = captureManualRoute(route.points, portFor(wire.from), portFor(wire.to));

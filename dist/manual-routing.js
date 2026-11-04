@@ -145,7 +145,8 @@ export function moveWireSegment(inputPoints, segmentIndex, coordinate, options =
   const to = options.to || { ...points.at(-1), side: inferredSide(points.at(-1), points.at(-2)) };
   if (!captureManualRoute(points, from, to)) return null;
   const { grid, gap } = settings(options);
-  coordinate = options.snap === false ? rounded(coordinate) : Math.round(coordinate / grid) * grid;
+  const snapGrid = settings({ grid: options.snapGrid ?? grid }).grid;
+  coordinate = options.snap === false ? rounded(coordinate) : Math.round(coordinate / snapGrid) * snapGrid;
   if (segmentIndex === 0) return moveFirstSegment(points, coordinate, from, to, grid, gap);
   if (segmentIndex === points.length - 2) {
     const reversed = moveFirstSegment(points.slice().reverse(), coordinate, to, from, grid, gap);
@@ -198,8 +199,8 @@ export function resolveManualRoute(value, fromInput, toInput, options = {}) {
   const manual = normalizeManualRoute(value), from = anchor(fromInput), to = anchor(toInput);
   if (!manual || !from || !to) return null;
   const { grid, gap } = settings(options);
-  const fromPort = { ...from, escapeX: fromInput.escapeX, escapeY: fromInput.escapeY };
-  const toPort = { ...to, escapeX: toInput.escapeX, escapeY: toInput.escapeY };
+  const fromPort = { ...from, escapeX: fromInput.escapeX, escapeY: fromInput.escapeY, routingPitch: fromInput.routingPitch };
+  const toPort = { ...to, escapeX: toInput.escapeX, escapeY: toInput.escapeY, routingPitch: toInput.routingPitch };
   const dxFrom = from.x - manual.from.x, dyFrom = from.y - manual.from.y;
   const dxTo = to.x - manual.to.x, dyTo = to.y - manual.to.y;
   if (from.side === manual.from.side && to.side === manual.to.side && close(dxFrom, dxTo) && close(dyFrom, dyTo)) {
@@ -217,7 +218,11 @@ export function resolveManualRoute(value, fromInput, toInput, options = {}) {
       const lead = reconnectShort([], port, join, grid, gap);
       return lead ? [...lead.slice(0, -1), ...route.slice(2)] : null;
     }
-    const trunk = constrainTrunk(route[1][axis], [port], grid, gap, axis);
+    // A short dense-terminal lead follows its new escape lane to clear its neighbor.
+    const movedDensePort = bounded(port.routingPitch) && port.routingPitch >= 2 &&
+      close(port[axis], oldPort[axis]) && close(Math.abs(port[cross] - oldPort[cross]), port.routingPitch) &&
+      Math.abs(original[1][axis] - oldPort[axis]) <= port.routingPitch * 3 + EPS;
+    const trunk = movedDensePort ? escapeCoordinate(port, grid, gap) : constrainTrunk(route[1][axis], [port], grid, gap, axis);
     if (trunk === null) return null;
     route[0] = copyPoint(port); route[1][cross] = port[cross];
     if (close(original[1][axis], original[2][axis])) route[2][axis] = trunk;

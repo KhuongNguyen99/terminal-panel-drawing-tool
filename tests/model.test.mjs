@@ -29,7 +29,7 @@ test('every module port uses its template geometry and correct side connection a
       if (['left', 'right'].includes(p.side)) {
         if (type === 'DIN_TERMINAL') {
           assert.equal(local.x, p.side === 'left' ? 40 : 820, 'wide terminal bank uses its approved external dots');
-          assert.equal(local.y, (local.signal === 'inner' ? 140 : 160) + local.channel * 40, 'bank row pairs keep their grid spacing');
+          assert.equal(local.y, (local.signal === 'inner' ? 140 : 150) + local.channel * 40, 'black bank connectors sit one 10-unit step below white');
           assert.equal(local.showLabel, false, 'terminal bank labels belong to connector pairs');
         } else {
           assert.equal(local.x, p.side === 'left' ? 60 : template.width - 60, 'existing I/O anchors stay outside their channel labels');

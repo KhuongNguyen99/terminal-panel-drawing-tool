@@ -49,7 +49,7 @@ test('wire-label imports retain bounded appearance while omitting all cable and 
   assert.equal(Object.hasOwn(defaults, 'height'), false);
   assert.equal(Object.hasOwn(defaults, 'color'), false);
   const minimum = project([label({ width: 0, height: 0 })]).nodes[0];
-  assert.deepEqual([minimum.width, minimum.height], [160, 60]);
+  assert.deepEqual([minimum.width, minimum.height], [1, 1]);
   assert.deepEqual(normalizeProject(copy(first), MODULE_TYPES), first);
 });
 

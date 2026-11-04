@@ -68,7 +68,7 @@ test('clipboard parsing rejects malformed or oversized input and sanitizes recog
   ] }));
   assert.ok(parsed);
   assert.equal(parsed.nodes[0].name.length, 120);
-  assert.deepEqual([parsed.nodes[0].width, parsed.nodes[0].height], [160, 600]);
+  assert.deepEqual([parsed.nodes[0].width, parsed.nodes[0].height], [1, 600]);
   assert.equal(parsed.nodes[0].colors.white, '#abcdef', 'four-wire colors are not migrated again');
   assert.equal(parsed.nodes[0].colors.green, '#2b9b68');
   assert.deepEqual([parsed.nodes[1].name, parsed.nodes[1].width, parsed.nodes[1].height], ['', 301, 40]);
@@ -209,7 +209,7 @@ test('wire-label clipboard data uses the model name, color, and size sanitizers'
   ] }));
   assert.ok(parsed);
   assert.equal(parsed.nodes[0].name.length, 120);
-  assert.deepEqual([parsed.nodes[0].color, parsed.nodes[0].width, parsed.nodes[0].height], ['#202631', 160, 600]);
+  assert.deepEqual([parsed.nodes[0].color, parsed.nodes[0].width, parsed.nodes[0].height], ['#202631', 1, 600]);
   assert.equal(Object.hasOwn(parsed.nodes[0], 'cable'), false);
   const defaults = fragment([wireLabel({ width: undefined, height: undefined, color: undefined })]);
   assert.deepEqual(labelClipboardBounds(defaults), { x: 900.25, y: 100.5, width: 210, height: 60 });

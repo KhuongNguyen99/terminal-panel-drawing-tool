@@ -130,8 +130,8 @@ test('implicit label dimensions use 210 by 60 for both conductor options', () =>
   assert.equal(deviceWidth(old), 210);
   assert.equal(deviceHeight(old), 60);
   assert.equal(deviceHeight({ ...old, wireCount: 4 }), 60);
-  assert.equal(deviceMinHeight(old), 60);
-  assert.equal(deviceMinHeight({ ...old, wireCount: 4 }), 60);
+  assert.equal(deviceMinHeight(old), 1);
+  assert.equal(deviceMinHeight({ ...old, wireCount: 4 }), 1);
   assert.equal(DEVICE_WIDTH, 210);
   assert.equal(DEVICE_HEIGHT, 60);
 });
@@ -141,8 +141,8 @@ test('imported label dimensions are finite, bounded integers with safe fallbacks
   assert.deepEqual([read({ width: '385.6', height: '175.2' }).width, read({ width: '385.6', height: '175.2' }).height], [386, 175]);
   const minimum = read({ width: -200, height: 0 });
   assert.equal(minimum.width, DEVICE_MIN_WIDTH);
-  assert.equal(minimum.height, 60);
-  assert.equal(read({ wireCount: 4, height: 1 }).height, 60);
+  assert.equal(minimum.height, 1);
+  assert.equal(read({ wireCount: 4, height: 1 }).height, 1);
   const maximum = read({ width: 1e20, height: 1e20 });
   assert.equal(maximum.width, DEVICE_MAX_WIDTH);
   assert.equal(maximum.height, DEVICE_MAX_HEIGHT);

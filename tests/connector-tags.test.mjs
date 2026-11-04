@@ -44,7 +44,7 @@ test('resized tags share their imported dimensions across connectors, obstacles,
 });
 
 test('tag sizes use safe defaults, clamp imports, and leave absent dimensions backward compatible', () => {
-  assert.deepEqual([TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT], [80, 1000, 30, 600]);
+  assert.deepEqual([TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT], [1, 1000, 1, 600]);
   for (const value of [undefined, null, '', ' ', NaN, Infinity, -Infinity, 'bad', true, [], {}]) {
     assert.equal(tagWidth({ width: value }), 160);
     assert.equal(tagHeight({ height: value }), 40);
@@ -63,7 +63,7 @@ test('tag sizes use safe defaults, clamp imports, and leave absent dimensions ba
     assert.equal(Object.hasOwn(n, 'height'), false);
     assert.deepEqual([tagWidth(n), tagHeight(n)], [160, 40]);
   }
-  assert.deepEqual(first.nodes.slice(2).map(n => [n.width, n.height]), [[80, 30], [1000, 600], [160, 40], [301, undefined]]);
+  assert.deepEqual(first.nodes.slice(2).map(n => [n.width, n.height]), [[1, 1], [1000, 600], [160, 40], [301, undefined]]);
   assert.deepEqual(boundsOf([first.nodes[3]], MODULE_TYPES), { x: 391, y: 91, width: 1018, height: 618 });
   assert.deepEqual(normalize(JSON.parse(JSON.stringify(first))), first);
 });

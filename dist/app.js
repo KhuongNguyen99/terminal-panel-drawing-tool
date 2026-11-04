@@ -301,7 +301,8 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
 const tagTextMeasure = document.createElement('canvas').getContext('2d');
 function tagMarkup(n, exporting = false) {
   const side = n.wireSide || 'right';
-  const w = tagWidth(n), h = tagHeight(n), tip = Math.min(10, h / 4);
+  const width = tagWidth(n), height = tagHeight(n);
+  const w = Math.max(80, width), h = Math.max(30, height), tip = Math.min(10, h / 4);
   const picked = selectedNode(), isSelected = !exporting && selected.has(n.id);
   const isPeer = !exporting && picked?.kind === 'tag' && picked.id !== n.id && tagNameKey(n.name) && tagNameKey(picked.name) === tagNameKey(n.name);
   const shape = side === 'left' ? `M0 ${h / 2} L14 0 H${w} V${h} H14 Z` : side === 'right' ? `M0 0 H${w - 14} L${w} ${h / 2} L${w - 14} ${h} H0 Z` : side === 'top' ? `M0 ${tip} H${w / 2 - 10} L${w / 2} 0 L${w / 2 + 10} ${tip} H${w} V${h} H0 Z` : `M0 0 H${w} V${h - tip} H${w / 2 + 10} L${w / 2} ${h} L${w / 2 - 10} ${h - tip} H0 Z`;
@@ -313,11 +314,11 @@ function tagMarkup(n, exporting = false) {
   tagTextMeasure.font = '700 13px Arial';
   const fit = tagTextMeasure.measureText(name).width > textWidth ? ` textLength="${textWidth}" lengthAdjust="spacingAndGlyphs"` : '';
   let out = `<g class="connector-tag-node ${isSelected ? 'is-selected' : ''} ${isPeer ? 'is-linked' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-tag-node="true" role="button" aria-label="Connector tag ${esc(name)} · ${tagNumber(n)}" tabindex="0"`} transform="translate(${n.x} ${n.y})">`;
-  if (!exporting && (isSelected || isPeer)) out += `<rect x="-7" y="-7" width="${w + 14}" height="${h + 14}" rx="9" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="${isSelected ? '5 3' : '2 4'}" opacity="${isSelected ? 1 : .6}" pointer-events="none"/>`;
-  out += `<title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text>`;
+  if (!exporting && (isSelected || isPeer)) out += `<rect x="-7" y="-7" width="${width + 14}" height="${height + 14}" rx="9" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="${isSelected ? '5 3' : '2 4'}" opacity="${isSelected ? 1 : .6}" pointer-events="none"/>`;
+  out += `<g transform="scale(${width / w} ${height / h})"><title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text></g>`;
   const p = geo.ports[`${n.id}:connector`];
   if (p) out += portMarkup(p, p.x - n.x, p.y - n.y, exporting);
-  if (isSelected && selected.size === 1) out += labelResizeMarkup(n, w, h);
+  if (isSelected && selected.size === 1) out += labelResizeMarkup(n, width, height);
   out += '</g>'; return out;
 }
 function nodeMarkup(n, exporting = false, embedded = {}) {
@@ -361,32 +362,36 @@ function labelResizeMarkup(n, w, h) {
   return handles.map(handle => `<g class="device-resize" data-resize="${handle.axis}" role="button" tabindex="0" aria-label="${handle.label}" transform="translate(${handle.x} ${handle.y})"><title>${handle.label} · drag, or use arrow keys</title><rect class="resize-hit" x="-7" y="-7" width="14" height="14" fill="transparent"/><rect class="resize-grip" x="-4" y="-4" width="8" height="8" rx="1.5" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/></g>`).join('');
 }
 function deviceMarkup(n, exporting = false) {
-  const h = deviceHeight(n), w = deviceWidth(n), rightCable = n.cableSide === 'right', badgeX = rightCable ? w - 58 : 0;
+  const height = deviceHeight(n), width = deviceWidth(n);
+  const h = Math.max(60, height), w = Math.max(160, width), rightCable = n.cableSide === 'right', badgeX = rightCable ? w - 58 : 0;
   const textCenter = rightCable ? (w - 58) / 2 : 58 + (w - 58) / 2;
   const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Unnamed device', w, h);
   let out = `<g class="device-node ${!exporting && selected.has(n.id) ? 'is-selected' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-drag-handle="true"`} transform="translate(${n.x} ${n.y})">`;
-  if (!exporting && selected.has(n.id)) out += `<rect x="-6" y="-6" width="${w + 12}" height="${h + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
-  out += `<rect class="device-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/><path d="M${rightCable ? w - 58 : 58} 0 V${h}" stroke="#d8e1e7"/><rect x="${badgeX + 1}" y="1" width="56" height="${h - 2}" rx="4" fill="#eef5f7"/><text x="${badgeX + 29}" y="${h / 2 - 10}" text-anchor="middle" font-size="8" letter-spacing="1" font-weight="700" fill="#6a8190">CABLE</text><text class="cable-label" x="${badgeX + 29}" y="${h / 2 + 15}" text-anchor="middle" fill="#186783" font-weight="700" font-size="${String(n.cable).length > 4 ? 13 : 23}" ${String(n.cable).length > 5 ? 'textLength="43" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(n.cable || '—')}</text>`;
+  if (!exporting && selected.has(n.id)) out += `<rect x="-6" y="-6" width="${width + 12}" height="${height + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
+  out += `<g transform="scale(${width / w} ${height / h})"><rect class="device-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/><path d="M${rightCable ? w - 58 : 58} 0 V${h}" stroke="#d8e1e7"/><rect x="${badgeX + 1}" y="1" width="56" height="${h - 2}" rx="4" fill="#eef5f7"/><text x="${badgeX + 29}" y="${h / 2 - 10}" text-anchor="middle" font-size="8" letter-spacing="1" font-weight="700" fill="#6a8190">CABLE</text><text class="cable-label" x="${badgeX + 29}" y="${h / 2 + 15}" text-anchor="middle" fill="#186783" font-weight="700" font-size="${String(n.cable).length > 4 ? 13 : 23}" ${String(n.cable).length > 5 ? 'textLength="43" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(n.cable || '—')}</text>`;
   lines.forEach((line, i) => { out += `<text class="device-title" x="${textCenter}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
-  out += `<text x="${textCenter}" y="${h - 11}" text-anchor="middle" font-size="9" fill="#728491">${n.wireCount}-wire cable</text>`;
+  out += `<text x="${textCenter}" y="${h - 11}" text-anchor="middle" font-size="9" fill="#728491">${n.wireCount}-wire cable</text></g>`;
   const c = CONDUCTORS[n.wireCount] || CONDUCTORS[2];
   c.forEach((conductor, i) => {
-    const x = n.wireSide === 'left' ? 0 : w, y = devicePortY(n, i), p = geo.ports[`${n.id}:${conductor.key}`];
+    const x = n.wireSide === 'left' ? 0 : width, y = devicePortY(n, i), p = geo.ports[`${n.id}:${conductor.key}`];
     if (exporting) out += `<circle cx="${x}" cy="${y}" r="2.5" fill="${safeColor(n.colors?.[conductor.key], conductor.color)}" stroke="${conductor.key === 'white' ? '#8b9ba8' : 'none'}" stroke-width="1"/>`;
     else out += portMarkup(p, x, y);
   });
-  if (!exporting && selected.has(n.id) && selected.size === 1) out += labelResizeMarkup(n, w, h);
+  if (!exporting && selected.has(n.id) && selected.size === 1) out += labelResizeMarkup(n, width, height);
   return out + '</g>';
 }
 
 function wireLabelMarkup(n, exporting = false) {
   const w = deviceWidth(n), h = deviceHeight(n), color = safeColor(n.color);
   const isSelected = !exporting && selected.has(n.id);
-  const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Wire label', w, h, { horizontalPadding: 24, verticalPadding: 20 });
+  const textWidth = Math.max(160, w), textHeight = Math.max(60, h);
+  const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Wire label', textWidth, textHeight, { horizontalPadding: 24, verticalPadding: 20 });
   let out = `<g class="wire-label-node ${isSelected ? 'is-selected' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-wire-label-node="true" data-drag-handle="true" role="button" tabindex="0" aria-label="Wire label ${esc(n.name || 'Unnamed label')}"`} transform="translate(${n.x} ${n.y})">`;
   if (isSelected) out += `<rect x="-6" y="-6" width="${w + 12}" height="${h + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
   out += `<rect class="wire-label-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/>`;
-  lines.forEach((line, i) => { out += `<text class="wire-label-title" x="${w / 2}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
+  out += `<g transform="scale(${w / textWidth} ${h / textHeight})">`;
+  lines.forEach((line, i) => { out += `<text class="wire-label-title" x="${textWidth / 2}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
+  out += '</g>';
   for (const side of ['left', 'right']) {
     const x = side === 'left' ? 0 : w;
     if (exporting) out += `<circle cx="${x}" cy="${h / 2}" r="2.5" fill="${color}" stroke="${color.toLowerCase() === '#ffffff' ? '#8996a4' : color}" stroke-width="1"/>`;

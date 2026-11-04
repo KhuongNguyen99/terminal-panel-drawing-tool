@@ -7,15 +7,15 @@ export const CONDUCTORS = {
 export const FOUR_WIRE_ORDER_REVISION = 'white-before-green-v1';
 export const DEVICE_WIDTH = 210;
 export const DEVICE_HEIGHT = 60;
-export const DEVICE_MIN_WIDTH = 160;
+export const DEVICE_MIN_WIDTH = 1;
 export const DEVICE_MAX_WIDTH = 1000;
 export const DEVICE_MAX_HEIGHT = 600;
-export const deviceMinHeight = () => 60;
+export const deviceMinHeight = () => 1;
 export const TAG_WIDTH = 160;
 export const TAG_HEIGHT = 40;
-export const TAG_MIN_WIDTH = 80;
+export const TAG_MIN_WIDTH = 1;
 export const TAG_MAX_WIDTH = 1000;
-export const TAG_MIN_HEIGHT = 30;
+export const TAG_MIN_HEIGHT = 1;
 export const TAG_MAX_HEIGHT = 600;
 
 export const tagName = value => value == null ? 'NET1' : String(value).trim().slice(0, 64).trim();
@@ -48,7 +48,7 @@ export const tagHeight = node => dimension(node?.height, TAG_HEIGHT, TAG_MIN_HEI
 export function devicePortY(node, index) {
   const count = Number(node?.wireCount) === 4 ? 4 : 2;
   const height = deviceHeight(node);
-  const inset = Math.max(10, Math.min(20, (height - (count - 1) * 20) / 2));
+  const inset = height < DEVICE_HEIGHT ? height / 6 : Math.max(10, Math.min(20, (height - (count - 1) * 20) / 2));
   return inset + index * (height - 2 * inset) / (count - 1);
 }
 export function applyCompactLabelSize(project) {

@@ -258,11 +258,12 @@ function moduleMarkup(n, exporting = false, embedded = {}) {
   for (const p of t.ports) {
     if (p.calloutPoints?.length > 1) {
       const label = modulePortLabel(n, p);
-      out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;
       if (t.terminalLayout === 'split-rows' && p.signal === 'inner') {
         const left = p.side === 'left';
+        out += `<rect class="terminal-pair-shell" x="${p.x - (left ? 12 : 100)}" y="${p.y - 8}" width="112" height="36" rx="7" fill="#dc2626" fill-opacity=".14" stroke="#dc2626" stroke-opacity=".7" stroke-width="1.5" pointer-events="none"/>`;
         pairLabels += `<text class="port-label terminal-pair-label" x="${p.x + (left ? 24 : -24)}" y="${p.y + 10}" text-anchor="${left ? 'start' : 'end'}" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#dc2626" stroke="#ffffff" stroke-width="2" paint-order="stroke fill" pointer-events="none">${esc(label)}</text>`;
       }
+      out += `<g class="port-callout" ${exporting ? '' : `data-port-callout="${esc(p.id)}" data-row="${p.channel + 1}" data-section="${p.side}"`}><title>${esc(label)}</title>${calloutArrow(p.calloutPoints, p.arrowStyle)}</g>`;
       out += portMarkup(geo.ports[`${n.id}:${p.id}`] || { ...p, id: `${n.id}:${p.id}`, kind: 'module' }, p.x, p.y, exporting);
       continue;
     }

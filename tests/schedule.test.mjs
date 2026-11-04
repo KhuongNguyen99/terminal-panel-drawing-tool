@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from '../dist/schedule.js';
 import { MODULE_TYPES } from '../dist/modules.js';
-import { boundsOf, deviceHeight, deviceWidth, geometry, normalizeProject } from '../dist/model.js';
+import { RTD_CHANNEL_LAYOUT_REVISION, boundsOf, deviceHeight, deviceWidth, geometry, normalizeProject } from '../dist/model.js';
 import { routeWires } from '../dist/router.js';
 
 const project = createScheduleProject();
@@ -79,6 +79,7 @@ test('Slot 5 stays Slot 5 and uses corrected tags while spare channels remain fr
 
 test('stable IDs and assignment metadata identify all populated channels', () => {
   assert.equal(project.sourceSchedule, 'rio-schedule-v1');
+  assert.equal(project.rtdChannelLayoutRevision, RTD_CHANNEL_LAYOUT_REVISION);
   assert.equal(new Set(project.nodes.map(n => n.id)).size, project.nodes.length);
   assert.equal(new Set(project.wires.map(w => w.id)).size, project.wires.length);
   for (const s of RIO_SCHEDULE) {
@@ -131,10 +132,30 @@ test('complete schedule has separated grid-aligned slot groups within export bou
       assert.ok(n.y >= oy && n.y + height < oy + 850);
       assert.ok(n.x >= bounds.x && n.y >= bounds.y);
       assert.ok(n.x + width <= bounds.x + bounds.width && n.y + height <= bounds.y + bounds.height);
-      if (n.kind === 'device' && s.type === 'AI_RTD') assert.equal(n.wireSide, n.assignment.channel < 2 ? 'right' : 'left');
+      if (n.kind === 'device' && s.type === 'AI_RTD') assert.equal(n.wireSide, n.assignment.channel % 2 ? 'left' : 'right');
     }
   }
   assert.ok(project.nodes.filter(n => n.kind === 'module' && n.rio === 'RIO B').every(n => n.y >= 2630));
+});
+
+test('scheduled RTD labels face their channel side and align by physical row', () => {
+  for (const s of RIO_SCHEDULE.filter(s => s.type === 'AI_RTD')) {
+    const module = project.nodes.find(n => n.id === s.id);
+    const ox = module.x - 440, oy = module.y - 80;
+    for (const c of s.channels.filter(c => c.device)) {
+      const label = project.nodes.find(n => n.id === `${s.id}-ch${c.channel}`);
+      const side = c.channel % 2 ? 'right' : 'left';
+      assert.deepEqual([label.x, label.y, label.cableSide, label.wireSide], [
+        ox + (side === 'left' ? 20 : 980),
+        oy + 150 + Math.floor(c.channel / 2) * 170,
+        side,
+        side === 'left' ? 'right' : 'left',
+      ], label.id);
+      const contacts = MODULE_TYPES.AI_RTD.ports.filter(p => p.channel === c.channel);
+      assert.equal(contacts.length, 4);
+      assert.ok(contacts.every(p => p.side === side), label.id);
+    }
+  }
 });
 
 test('all scheduled connections route between their exact assigned ports with no blocked or shared segments', () => {

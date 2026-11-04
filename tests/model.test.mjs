@@ -47,16 +47,55 @@ test('every module port uses its template geometry and correct side connection a
   }
 });
 
-test('RTD preserves the four distinct terminals and reference side for every channel', () => {
+test('RTD channel labels and contact rows match the corrected physical terminals', () => {
   const ports = MODULE_TYPES.AI_RTD.ports;
   assert.equal(ports.length, 16);
+  const expected = {
+    left: ['CH0 M+', 'CH2 M+', 'CH0 M-', 'CH2 M-', 'CH0 I+', 'CH2 I+', 'CH0 I-', 'CH2 I-'],
+    right: ['CH1 M+', 'CH3 M+', 'CH1 M-', 'CH3 M-', 'CH1 I+', 'CH3 I+', 'CH1 I-', 'CH3 I-'],
+  };
+  const photoRows = [311, 330, 348, 367, 386, 405, 424, 443];
+  for (const side of ['left', 'right']) {
+    const sidePorts = ports.filter(p => p.side === side);
+    assert.deepEqual(sidePorts.map(p => p.label), expected[side]);
+    for (const [row, p] of sidePorts.entries()) {
+      assert.equal(p.id, `ch${p.channel}-${p.signal.replace('+', 'plus').replace('-', 'minus').toLowerCase()}`);
+      assert.equal(p.y, 310 + row * 20);
+      assert.equal(p.pinY, photoRows[row] * 480 / 486);
+      assert.equal(p.x, side === 'left' ? 60 : 300);
+    }
+  }
   for (let ch = 0; ch < 4; ch++) {
     const channelPorts = ports.filter(p => p.channel === ch);
     assert.equal(channelPorts.length, 4);
     assert.deepEqual(new Set(channelPorts.map(p => p.signal)), new Set(['M+', 'M-', 'I+', 'I-']));
-    assert.ok(channelPorts.every(p => p.side === (ch < 2 ? 'left' : 'right')));
+    assert.ok(channelPorts.every(p => p.side === (ch % 2 ? 'right' : 'left')));
+    assert.equal(new Set(channelPorts.map(p => p.y)).size, 4);
   }
-  assert.deepEqual(ports.filter(p => p.side === 'left').map(p => p.label), ['CH0 M+', 'CH1 M+', 'CH0 M-', 'CH1 M-', 'CH0 I+', 'CH1 I+', 'CH0 I-', 'CH1 I-']);
+});
+
+test('saved RTD wire endpoint IDs reopen on the corrected channel contacts', () => {
+  const saved = project({
+    nodes: [
+      device({ id: 'device-1', wireCount: 4 }),
+      device({ id: 'device-2', y: 300, wireCount: 4 }),
+      module({ type: 'AI_RTD' }),
+    ],
+    wires: [
+      wire({ id: 'ch1-wire', from: 'device-1:red', to: 'module-1:ch1-mplus' }),
+      wire({ id: 'ch2-wire', from: 'device-2:red', to: 'module-1:ch2-mplus' }),
+    ],
+  });
+  const reopened = normalize(JSON.parse(JSON.stringify(normalize(saved))));
+  assert.deepEqual(reopened.wires.map(w => w.to), ['module-1:ch1-mplus', 'module-1:ch2-mplus']);
+  const { ports } = geometry(reopened.nodes, MODULE_TYPES);
+  assert.deepEqual(['ch1-mplus', 'ch2-mplus'].map(id => {
+    const p = ports[`module-1:${id}`];
+    return [p.label, p.side, p.x, p.y];
+  }), [
+    ['CH1 M+', 'right', 800, 340],
+    ['CH2 M+', 'left', 560, 360],
+  ]);
 });
 
 test('standard AI, DQ, AQ and Ex-AI preserve all annotated channel assignments', () => {

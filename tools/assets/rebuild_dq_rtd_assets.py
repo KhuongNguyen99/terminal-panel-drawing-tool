@@ -87,9 +87,10 @@ def build(kind):
     circle_left, circle_right = (45, 64) if dq else (40.5, 59)
     rows = [312, 330, 349, 368, 387, 406, 425, 444, 463] if dq else [311, 330, 348, 367, 386, 405, 424, 443, 462]
     title = 'DQ 8x24VDC/0.5A HF — 6ES7132-6BF00-0CA0' if dq else 'AI 4xRTD/TC HF — 6ES7134-6JD00-0CA1'
+    channel_note = '' if dq else ' RTD terminals use CH0/CH2 on the left and CH1/CH3 on the right; each channel has M+, M-, I+ and I- connections.'
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{source_width * 4}" height="1944" viewBox="0 0 {source_width} 486" role="img" aria-label="{title}">',
            f'<title>{title}</title>',
-           '<desc>Precise front-view reconstruction from the supplied module reference. Geometry, visible wording, indicator layout, terminal rows and colors follow that reference. Small unreadable molded edge marks retain their original pixel outlines.</desc>']
+           f'<desc>Precise front-view reconstruction from the supplied module reference. Geometry, visible wording, indicator layout, terminal rows and colors follow that reference. Small unreadable molded edge marks retain their original pixel outlines.{channel_note}</desc>']
     # Rear housing tongue and its subdued outer lip.
     svg += [f'<path d="M{left - 15.5} 30H{left + 1}V97H{left - 15.5}Z" fill="{face}" stroke="{edge}" stroke-width="1"/>',
             f'<path d="M{left - 16.5} 30V97" fill="none" stroke="#969696" stroke-width=".8"/>',
@@ -141,8 +142,12 @@ def build(kind):
             f'<path d="M{left + 1} 298V482" stroke="#8b8b8b" stroke-width=".65"/>',
             f'<path d="M{right - 1} 298V482" stroke="#5a5a5a" stroke-width=".7"/>']
     for index, cy in enumerate(rows):
-        for cx in [circle_left, circle_right]:
-            svg.append(f'<circle cx="{cx}" cy="{cy}" r="8.55" fill="{face}" stroke="#585858" stroke-width=".85"/>')
+        for column, cx in enumerate([circle_left, circle_right]):
+            terminal_label = ''
+            if not dq and index < 8:
+                signal = ['M+', 'M+', 'M-', 'M-', 'I+', 'I+', 'I-', 'I-'][index]
+                terminal_label = f' aria-label="CH{index % 2 * 2 + column} {signal}"'
+            svg.append(f'<circle cx="{cx}" cy="{cy}" r="8.55" fill="{face}" stroke="#585858" stroke-width=".85"{terminal_label}/>')
             svg.append(f'<path d="M{cx - 7.8} {cy + 2.7}A8.3 8.3 0 0 0 {cx + 6.7} {cy + 4.8}" fill="none" stroke="#808080" stroke-width=".35"/>')
         for side in ['left', 'right']:
             slot_x = left + 3 if side == 'left' else right - 11

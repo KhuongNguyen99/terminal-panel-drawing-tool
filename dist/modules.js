@@ -93,9 +93,9 @@ const rtdSignals = ['M+', 'M+', 'M-', 'M-', 'I+', 'I+', 'I-', 'I-'];
 const rtdColors = ['#b58e07', '#15803d', '#0891b2', '#c026d3'];
 const rtdPhotoRows = [311, 330, 348, 367, 386, 405, 424, 443];
 for (const side of ['left', 'right']) {
-  const offset = side === 'left' ? 0 : 2;
+  const offset = side === 'left' ? 0 : 1;
   rtdSignals.forEach((signal, row) => {
-    const channel = row % 2 + offset;
+    const channel = (row % 2) * 2 + offset;
     rtdPorts.push(port(channel, signal, side, 310 + row * 20, {
       pinY: rtdPhotoRows[row] * IMAGE_HEIGHT / 486,
       accent: rtdColors[channel],
@@ -191,7 +191,7 @@ export const MODULE_TYPES = Object.freeze({
   AI: template('AI', 'AI', '8 channels · 2-wire', 'assets/module-ai.svg', aiBody, aiPorts,
     'Standard eight-channel AI module from the Slot 5 drawing. Negative terminals are above the positive terminals.'),
   AI_RTD: template('AI_RTD', 'AI RTD', '4 × RTD / TC', 'assets/module-ai-rtd.svg', rtdBody, rtdPorts,
-    'Four channels with M+, M−, I+, and I− terminals. Channel colors follow the supplied reference.'),
+    'Four channels with M+, M−, I+, and I− terminals. CH0 and CH2 are on the left; CH1 and CH3 are on the right.'),
   AQ: template('AQ', 'AQ', '2 × U / I', 'assets/module-aq.svg', aqBody, aqPorts,
     'Two analog output channels, with one positive and one negative connection per channel.'),
   EX_AI: template('EX_AI', 'Ex-AI', '2 × I · 2-wire HART', 'assets/module-ex-ai.svg', exBody, exPorts,

@@ -9,7 +9,7 @@ import { createZip } from './zip.js';
 import { routePath } from './wire-path.js';
 import { wrapText, fitTextAttributes } from './text-layout.js';
 import { loadStoredProject } from './project-storage.js';
-import { MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, canAddToProject, positionInBounds, clampPosition } from './model.js';
+import { MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, RTD_CHANNEL_LAYOUT_REVISION, canAddToProject, positionInBounds, clampPosition } from './model.js';
 import { synchronizeWireLabelColors, setConnectedWireColor, setConductorColor } from './model.js';
 import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, DEVICE_MIN_WIDTH, DEVICE_MAX_WIDTH, DEVICE_MAX_HEIGHT, TAG_MIN_WIDTH, TAG_MAX_WIDTH, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT, tagWidth, tagHeight, tagName, tagNameKey, matchingTags, nextTagName, deviceMinHeight, deviceWidth, deviceHeight, devicePortY, applyCompactLabelSize, clone, escapeXML as esc, safeColor, snap, makeId, geometry, compatiblePorts, terminalRowName, modulePortLabel, normalizeProject, boundsOf } from './model.js';
 
@@ -66,7 +66,7 @@ function exampleProject(full = false) {
       if (port) wires.push({ id: `wire-${ch}-${key}`, from: `${d.id}:${key}`, to: `${m.id}:${port.id}`, color: CONDUCTORS[2].find(c => c.key === key).color, width: 2.5 });
     }
   });
-  return { version: 1, title: full ? 'RIO A · Slot 5' : 'My wiring project', nodes, wires, settings: { grid: 10, snap: true, defaultWidth: 2.5, autoRoute: false }, labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION };
+  return { version: 1, title: full ? 'RIO A · Slot 5' : 'My wiring project', nodes, wires, settings: { grid: 10, snap: true, defaultWidth: 2.5, autoRoute: false }, labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION, rtdChannelLayoutRevision: RTD_CHANNEL_LAYOUT_REVISION };
 }
 
 let storage;

@@ -1,5 +1,5 @@
 import { MODULE_TYPES } from './modules.js';
-import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION } from './model.js';
+import { CONDUCTORS, FOUR_WIRE_ORDER_REVISION, RTD_CHANNEL_LAYOUT_REVISION } from './model.js';
 
 // Transcribed from the two supplied RIO sheets. Empty channels are spares;
 // .wire_ok rows are status metadata, not additional physical connections.
@@ -94,11 +94,11 @@ export function createScheduleProject() {
     for (const c of s.channels) {
       if (!c.device) continue;
       const rtd = s.type === 'AI_RTD';
-      const side = rtd ? (c.channel < 2 ? 'left' : 'right') : (c.channel % 2 ? 'right' : 'left');
+      const side = c.channel % 2 ? 'right' : 'left';
       const device = {
         id: `${s.id}-ch${c.channel}`, kind: 'device', name: c.device, cable: c.cable,
         wireCount: rtd ? 4 : 2, x: ox + (side === 'left' ? 20 : 980),
-        y: oy + 150 + (rtd ? c.channel % 2 : Math.floor(c.channel / 2)) * 170,
+        y: oy + 150 + Math.floor(c.channel / 2) * 170,
         cableSide: side, wireSide: side === 'left' ? 'right' : 'left', colors: {},
         assignment: { moduleId: s.id, channel: c.channel, tag: c.tag, statusTag: c.statusTag, pinType: c.pinType },
       };
@@ -117,7 +117,7 @@ export function createScheduleProject() {
     }
   });
   return {
-    version: 1, title: 'RIO A + RIO B · Complete channel schedule', sourceSchedule: 'rio-schedule-v1', labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION,
+    version: 1, title: 'RIO A + RIO B · Complete channel schedule', sourceSchedule: 'rio-schedule-v1', labelSizeRevision: '210x60-v1', fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION, rtdChannelLayoutRevision: RTD_CHANNEL_LAYOUT_REVISION,
     nodes, wires, settings: { grid: 10, snap: true, defaultWidth: 2.5, autoRoute: false },
   };
 }

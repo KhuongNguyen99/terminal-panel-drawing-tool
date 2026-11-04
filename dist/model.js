@@ -5,6 +5,7 @@ export const CONDUCTORS = {
   4: [{ key: 'red', name: 'Red', color: '#e54b4b' }, { key: 'black', name: 'Black', color: '#202631' }, { key: 'white', name: 'White', color: '#ffffff' }, { key: 'green', name: 'Green', color: '#2b9b68' }]
 };
 export const FOUR_WIRE_ORDER_REVISION = 'white-before-green-v1';
+export const RTD_CHANNEL_LAYOUT_REVISION = 'interleaved-channels-v1';
 export const DEVICE_WIDTH = 210;
 export const DEVICE_HEIGHT = 60;
 export const DEVICE_MIN_WIDTH = 1;
@@ -234,6 +235,25 @@ export function applyFourWireOrder(project) {
   return true;
 }
 
+/** Rebuild only paths attached to the RTD contacts that changed physical sides. */
+export function applyRtdChannelLayout(project, types) {
+  if (project.rtdChannelLayoutRevision === RTD_CHANNEL_LAYOUT_REVISION) return false;
+  const rtdIds = new Set(project.nodes.filter(node => node.kind === 'module' && node.type === 'AI_RTD').map(node => node.id));
+  if (rtdIds.size) {
+    const { ports } = geometry(project.nodes, types);
+    const movedContact = id => {
+      const port = ports[id];
+      return port?.kind === 'module' && rtdIds.has(port.nodeId) && (port.channel === 1 || port.channel === 2);
+    };
+    for (const wire of project.wires) if (movedContact(wire.from) || movedContact(wire.to)) {
+      delete wire.manual;
+      delete wire.savedRoute;
+    }
+  }
+  project.rtdChannelLayoutRevision = RTD_CHANNEL_LAYOUT_REVISION;
+  return true;
+}
+
 export const snap = (value, grid = 10) => Math.round(value / grid) * grid;
 export const makeId = (prefix = 'n') => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -397,8 +417,9 @@ export function normalizeProject(input, types) {
     return { id, from: from.id, to: to.id, color: safeColor(raw.color, from.color), width: Math.max(1, Math.min(8, Number(raw.width) || 2.5)), ...routeGeometry };
   });
   const settings = { grid: [5, 10, 20].includes(Number(input.settings?.grid)) ? Number(input.settings.grid) : 10, snap: input.settings?.snap !== false, defaultWidth: Math.max(1, Math.min(8, Number(input.settings?.defaultWidth) || 2.5)), autoRoute: input.settings?.autoRoute === true };
-  const project = { version: 1, title: str(input.title || 'Untitled wiring'), nodes, wires, settings, ...(input.sourceSchedule === 'rio-schedule-v1' ? { sourceSchedule: input.sourceSchedule } : {}), ...(input.labelSizeRevision === '210x60-v1' ? { labelSizeRevision: input.labelSizeRevision } : {}), ...(input.fourWireOrderRevision === FOUR_WIRE_ORDER_REVISION ? { fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION } : {}) };
+  const project = { version: 1, title: str(input.title || 'Untitled wiring'), nodes, wires, settings, ...(input.sourceSchedule === 'rio-schedule-v1' ? { sourceSchedule: input.sourceSchedule } : {}), ...(input.labelSizeRevision === '210x60-v1' ? { labelSizeRevision: input.labelSizeRevision } : {}), ...(input.fourWireOrderRevision === FOUR_WIRE_ORDER_REVISION ? { fourWireOrderRevision: FOUR_WIRE_ORDER_REVISION } : {}), ...(input.rtdChannelLayoutRevision === RTD_CHANNEL_LAYOUT_REVISION ? { rtdChannelLayoutRevision: RTD_CHANNEL_LAYOUT_REVISION } : {}) };
   applyFourWireOrder(project);
+  applyRtdChannelLayout(project, types);
   synchronizeWireLabelColors(project);
   return project;
 }

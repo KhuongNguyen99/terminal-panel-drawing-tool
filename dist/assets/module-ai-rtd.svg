@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="332" height="1944" viewBox="0 0 83 486" role="img" aria-label="AI 4xRTD/TC HF — 6ES7134-6JD00-0CA1">
 <title>AI 4xRTD/TC HF — 6ES7134-6JD00-0CA1</title>
-<desc>Precise front-view reconstruction from the supplied module reference. Geometry, visible wording, indicator layout, terminal rows and colors follow that reference. Small unreadable molded edge marks retain their original pixel outlines.</desc>
+<desc>Precise front-view reconstruction from the supplied module reference. Geometry, visible wording, indicator layout, terminal rows and colors follow that reference. Small unreadable molded edge marks retain their original pixel outlines. RTD terminals use CH0/CH2 on the left and CH1/CH3 on the right; each channel has M+, M-, I+ and I- connections.</desc>
 <path d="M2.5 30H19V97H2.5Z" fill="#757575" stroke="#5d5d5d" stroke-width="1"/>
 <path d="M1.5 30V97" fill="none" stroke="#969696" stroke-width=".8"/>
 <path d="M-1 250L11 241V251H19V262H-1Z" fill="#757575" stroke="#5d5d5d" stroke-width=".85"/>
@@ -51,9 +51,9 @@
 <path d="M18 298H81V483H18Z" fill="#757575" stroke="#5d5d5d" stroke-width=".85"/>
 <path d="M19 298V482" stroke="#8b8b8b" stroke-width=".65"/>
 <path d="M80 298V482" stroke="#5a5a5a" stroke-width=".7"/>
-<circle cx="40.5" cy="311" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="311" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH0 M+"/>
 <path d="M32.7 313.7A8.3 8.3 0 0 0 47.2 315.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="311" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="311" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH1 M+"/>
 <path d="M51.2 313.7A8.3 8.3 0 0 0 65.7 315.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 302.3H29.2V319.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 303.4H27.1V318.6H23Z" fill="#4f4f4f"/>
@@ -66,9 +66,9 @@
 <circle cx="78" cy="311.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 304V307.4M76.4 314.5V318" stroke="#666666" stroke-width=".7"/>
 <circle cx="49.75" cy="320.5" r="2.45" fill="#757575" stroke="#606060" stroke-width=".75"/>
-<circle cx="40.5" cy="330" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="330" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH2 M+"/>
 <path d="M32.7 332.7A8.3 8.3 0 0 0 47.2 334.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="330" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="330" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH3 M+"/>
 <path d="M51.2 332.7A8.3 8.3 0 0 0 65.7 334.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 321.3H29.2V338.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 322.4H27.1V337.6H23Z" fill="#4f4f4f"/>
@@ -80,9 +80,9 @@
 <path d="M71 322V338" stroke="#414141" stroke-width="1"/>
 <circle cx="78" cy="330.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 323V326.4M76.4 333.5V337" stroke="#666666" stroke-width=".7"/>
-<circle cx="40.5" cy="348" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="348" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH0 M-"/>
 <path d="M32.7 350.7A8.3 8.3 0 0 0 47.2 352.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="348" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="348" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH1 M-"/>
 <path d="M51.2 350.7A8.3 8.3 0 0 0 65.7 352.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 339.3H29.2V356.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 340.4H27.1V355.6H23Z" fill="#4f4f4f"/>
@@ -95,9 +95,9 @@
 <circle cx="78" cy="348.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 341V344.4M76.4 351.5V355" stroke="#666666" stroke-width=".7"/>
 <circle cx="49.75" cy="357.5" r="2.45" fill="#757575" stroke="#606060" stroke-width=".75"/>
-<circle cx="40.5" cy="367" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="367" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH2 M-"/>
 <path d="M32.7 369.7A8.3 8.3 0 0 0 47.2 371.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="367" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="367" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH3 M-"/>
 <path d="M51.2 369.7A8.3 8.3 0 0 0 65.7 371.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 358.3H29.2V375.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 359.4H27.1V374.6H23Z" fill="#4f4f4f"/>
@@ -109,9 +109,9 @@
 <path d="M71 359V375" stroke="#414141" stroke-width="1"/>
 <circle cx="78" cy="367.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 360V363.4M76.4 370.5V374" stroke="#666666" stroke-width=".7"/>
-<circle cx="40.5" cy="386" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="386" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH0 I+"/>
 <path d="M32.7 388.7A8.3 8.3 0 0 0 47.2 390.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="386" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="386" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH1 I+"/>
 <path d="M51.2 388.7A8.3 8.3 0 0 0 65.7 390.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 377.3H29.2V394.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 378.4H27.1V393.6H23Z" fill="#f5f5f5"/>
@@ -124,9 +124,9 @@
 <circle cx="78" cy="386.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 379V382.4M76.4 389.5V393" stroke="#666666" stroke-width=".7"/>
 <circle cx="49.75" cy="395.5" r="2.45" fill="#757575" stroke="#606060" stroke-width=".75"/>
-<circle cx="40.5" cy="405" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="405" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH2 I+"/>
 <path d="M32.7 407.7A8.3 8.3 0 0 0 47.2 409.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="405" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="405" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH3 I+"/>
 <path d="M51.2 407.7A8.3 8.3 0 0 0 65.7 409.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 396.3H29.2V413.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 397.4H27.1V412.6H23Z" fill="#f5f5f5"/>
@@ -138,9 +138,9 @@
 <path d="M71 397V413" stroke="#414141" stroke-width="1"/>
 <circle cx="78" cy="405.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 398V401.4M76.4 408.5V412" stroke="#666666" stroke-width=".7"/>
-<circle cx="40.5" cy="424" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="424" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH0 I-"/>
 <path d="M32.7 426.7A8.3 8.3 0 0 0 47.2 428.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="424" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="424" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH1 I-"/>
 <path d="M51.2 426.7A8.3 8.3 0 0 0 65.7 428.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 415.3H29.2V432.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 416.4H27.1V431.6H23Z" fill="#f5f5f5"/>
@@ -152,9 +152,9 @@
 <path d="M71 416V432" stroke="#414141" stroke-width="1"/>
 <circle cx="78" cy="424.2" r="2.1" fill="#757575" stroke="#555555" stroke-width=".6"/>
 <path d="M76.4 417V420.4M76.4 427.5V431" stroke="#666666" stroke-width=".7"/>
-<circle cx="40.5" cy="443" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="40.5" cy="443" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH2 I-"/>
 <path d="M32.7 445.7A8.3 8.3 0 0 0 47.2 447.8" fill="none" stroke="#808080" stroke-width=".35"/>
-<circle cx="59" cy="443" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85"/>
+<circle cx="59" cy="443" r="8.55" fill="#757575" stroke="#585858" stroke-width=".85" aria-label="CH3 I-"/>
 <path d="M51.2 445.7A8.3 8.3 0 0 0 65.7 447.8" fill="none" stroke="#808080" stroke-width=".35"/>
 <path d="M21 434.3H29.2V451.7H21Z" fill="#656565" stroke="#505050" stroke-width=".8"/>
 <path d="M23 435.4H27.1V450.6H23Z" fill="#f5f5f5"/>

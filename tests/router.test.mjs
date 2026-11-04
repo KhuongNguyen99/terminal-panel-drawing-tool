@@ -216,11 +216,12 @@ const { MODULE_TYPES } = await loadLocalModule('../dist/modules.js');
 const model = await loadLocalModule('../dist/model.js');
 const appSource = await readFile(new URL('../dist/app.js', import.meta.url), 'utf8');
 const exampleFunctions = appSource.slice(appSource.indexOf('function newDevice('), appSource.indexOf('\ntry {'));
-const applicationExamples = new Function('MODULE_TYPES', 'makeId', 'CONDUCTORS', 'FOUR_WIRE_ORDER_REVISION',
-  `${exampleFunctions}; return [exampleProject(false), exampleProject(true)];`)(MODULE_TYPES, model.makeId, model.CONDUCTORS, model.FOUR_WIRE_ORDER_REVISION);
+const applicationExamples = new Function('MODULE_TYPES', 'makeId', 'CONDUCTORS', 'FOUR_WIRE_ORDER_REVISION', 'RTD_CHANNEL_LAYOUT_REVISION',
+  `${exampleFunctions}; return [exampleProject(false), exampleProject(true)];`)(MODULE_TYPES, model.makeId, model.CONDUCTORS, model.FOUR_WIRE_ORDER_REVISION, model.RTD_CHANNEL_LAYOUT_REVISION);
 test('actual app Slot 5 example routes all 16 conductors without overlapping or entering nodes', () => {
   const project = applicationExamples[1], geo = model.geometry(project.nodes, MODULE_TYPES);
   assert.ok(applicationExamples.every(p => p.fourWireOrderRevision === model.FOUR_WIRE_ORDER_REVISION), 'new app projects must not be migrated as legacy files after saving');
+  assert.ok(applicationExamples.every(p => p.rtdChannelLayoutRevision === model.RTD_CHANNEL_LAYOUT_REVISION), 'new app projects use the corrected RTD layout');
   assert.equal(project.wires.length, 16);
   const started = performance.now();
   const result = routeWires({ wires: project.wires, ...geo, grid: project.settings.grid, gap: 10 });

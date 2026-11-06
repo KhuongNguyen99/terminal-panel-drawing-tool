@@ -114,6 +114,8 @@ The app is a manual diagram editor. It preserves the channel labels in the suppl
 
 Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The five I/O module front views use scalable SVG artwork. The DIN resistor bank uses the approved 2384 × 2055 transparent PNG, and the 20-row solenoid terminal bank uses its approved 1140 × 1380 transparent PNG. The I/O modules and resistor bank retain bold red callout arrows; the solenoid terminal bank uses white and black arrows with bold black borders. All arrowheads point to the circular terminal coordinates. DIN titles sit above the hardware, and new wire paths avoid the title bars. All artwork is embedded into exported PNGs.
 
+Device label boxes with matching cable numbers automatically share a color. Red, blue, yellow, green, orange, and purple repeat across cable groups. Colors stay consistent when labels move, are copied, or reopen in another project. Blank cable numbers keep neutral boxes. These box colors help trace cables; conductor and wire colors retain their existing meaning.
+
 ## Formatting labels together
 
 Shift-click label boxes (or drag a selection around them), then use **Properties** to set their common **Width**, **Height**, **Font size**, or **Text width**. Different values appear as **Mixed** until you change that field. If modules are also selected, formatting applies to the selected labels only.

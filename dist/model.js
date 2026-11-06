@@ -61,6 +61,12 @@ export const deviceWidth = node => dimension(node?.width, DEVICE_WIDTH, DEVICE_M
 export const deviceHeight = node => dimension(node?.height, DEVICE_HEIGHT, deviceMinHeight(node), DEVICE_MAX_HEIGHT);
 export const tagWidth = node => dimension(node?.width, TAG_WIDTH, TAG_MIN_WIDTH, TAG_MAX_WIDTH);
 export const tagHeight = node => dimension(node?.height, TAG_HEIGHT, TAG_MIN_HEIGHT, TAG_MAX_HEIGHT);
+function labelInteger(value, min, max) {
+  const numeric = typeof value === 'number' || (typeof value === 'string' && value.trim() !== '') ? Number(value) : NaN;
+  return Number.isInteger(numeric) && numeric >= min && numeric <= max ? numeric : undefined;
+}
+export const labelFontSize = node => labelInteger(node?.fontSize, 6, 72);
+export const labelTextWidthPercent = node => labelInteger(node?.textWidthPercent, 25, 200) ?? 100;
 export function devicePortY(node, index) {
   const count = Number(node?.wireCount) === 4 ? 4 : 2;
   const height = deviceHeight(node);
@@ -356,18 +362,24 @@ export function normalizeProject(input, types) {
     if (!/^[a-zA-Z0-9_-]+$/.test(id) || ids.has(id)) throw new Error('The project contains invalid or duplicate item IDs.');
     ids.add(id);
     const n = { id, kind: raw.kind, x: pos(raw.x), y: pos(raw.y), name: str(raw.name) };
+    const typography = {};
+    if (raw.kind !== 'module') {
+      const fontSize = labelFontSize(raw);
+      if (fontSize !== undefined) typography.fontSize = fontSize;
+      if (Object.hasOwn(raw, 'textWidthPercent')) typography.textWidthPercent = labelTextWidthPercent(raw);
+    }
     if (n.kind === 'tag') {
       const size = {};
       if (raw.width != null && raw.width !== '') size.width = tagWidth(raw);
       if (raw.height != null && raw.height !== '') size.height = tagHeight(raw);
-      return { ...n, name: tagName(raw.name), wireSide: ['left', 'right', 'top', 'bottom'].includes(raw.wireSide) ? raw.wireSide : 'right', ...size };
+      return { ...n, name: tagName(raw.name), wireSide: ['left', 'right', 'top', 'bottom'].includes(raw.wireSide) ? raw.wireSide : 'right', ...size, ...typography };
     }
     if (n.kind === 'wire-label') {
       const appearance = {};
       if (raw.width != null && raw.width !== '') appearance.width = deviceWidth(raw);
       if (raw.height != null && raw.height !== '') appearance.height = deviceHeight(raw);
       if (raw.color != null && raw.color !== '') appearance.color = safeColor(raw.color);
-      return { ...n, ...appearance };
+      return { ...n, ...appearance, ...typography };
     }
     if (n.kind === 'module') {
       if (!types[raw.type]) throw new Error(`Unknown module type: ${str(raw.type, 24)}`);
@@ -385,7 +397,7 @@ export function normalizeProject(input, types) {
     if (raw.height != null && raw.height !== '') size.height = deviceHeight({ ...raw, wireCount });
     const assignment = raw.assignment && typeof raw.assignment === 'object' && /^[a-zA-Z0-9_-]{1,90}$/.test(raw.assignment.moduleId || '') && Number.isInteger(raw.assignment.channel) && raw.assignment.channel >= 0 && raw.assignment.channel < 128
       ? { assignment: { moduleId: str(raw.assignment.moduleId, 90), channel: raw.assignment.channel, tag: str(raw.assignment.tag), statusTag: str(raw.assignment.statusTag), pinType: str(raw.assignment.pinType, 16) } } : {};
-    return { ...n, cable: str(raw.cable, 36), wireCount, cableSide: raw.cableSide === 'right' ? 'right' : 'left', wireSide: raw.wireSide === 'left' ? 'left' : 'right', colors, ...size, ...assignment };
+    return { ...n, cable: str(raw.cable, 36), wireCount, cableSide: raw.cableSide === 'right' ? 'right' : 'left', wireSide: raw.wireSide === 'left' ? 'left' : 'right', colors, ...size, ...typography, ...assignment };
   });
   const moduleIds = new Set(nodes.filter(n => n.kind === 'module').map(n => n.id));
   for (const n of nodes) if (n.assignment && !moduleIds.has(n.assignment.moduleId)) delete n.assignment;

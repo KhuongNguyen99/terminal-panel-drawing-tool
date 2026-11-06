@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { wrapText, fitTextAttributes } from '../dist/text-layout.js';
+import { wrapText, fitTextAttributes, layoutLabelText } from '../dist/text-layout.js';
 
 const width = text => [...text].length;
 
@@ -33,4 +33,39 @@ test('fitTextAttributes applies only to overflowing text and positive finite wid
   assert.equal(fitTextAttributes('abc', 4, width), '');
   assert.equal(fitTextAttributes('abc', 0, width), '');
   assert.equal(fitTextAttributes('abc', Infinity, width), '');
+});
+
+test('text width condenses or expands glyphs while keeping them inside the available width', () => {
+  assert.equal(fitTextAttributes('abcd', 10, width, .5), ' textLength="2" lengthAdjust="spacingAndGlyphs"');
+  assert.equal(fitTextAttributes('abcd', 10, width, 2), ' textLength="8" lengthAdjust="spacingAndGlyphs"');
+  assert.equal(fitTextAttributes('abcd', 5, width, 2), ' textLength="5" lengthAdjust="spacingAndGlyphs"');
+  assert.equal(fitTextAttributes('', 10, width, .5), '');
+});
+
+const measure = (text, size) => [...text].length * size;
+
+test('explicit font sizes stay fixed, and condensation determines when names wrap', () => {
+  const options = { fontSize: 10, horizontalPadding: 20, verticalPadding: 20 };
+  const normal = layoutLabelText('ABCD EFGH', 100, 100, measure, options);
+  const condensed = layoutLabelText('ABCD EFGH', 100, 100, measure, { ...options, textWidthPercent: 70 });
+  assert.deepEqual(normal.lines, ['ABCD', 'EFGH']);
+  assert.deepEqual(condensed.lines, ['ABCD EFGH']);
+  assert.equal(condensed.fontSize, 10);
+  assert.equal(condensed.widthScale, .7);
+  assert.equal(layoutLabelText('ABCD EFGH', 100, 60, measure, { fontSize: 24 }).fontSize, 24);
+});
+
+test('auto text can shrink, while crowded labels retain every character without inserted spaces', () => {
+  assert.equal(layoutLabelText('A', 210, 60, measure).fontSize, 15);
+  const name = 'ABCDEFGHIJKLMNO';
+  const automatic = layoutLabelText(name, 160, 60, measure);
+  assert.equal(automatic.fontSize, 10);
+  assert.equal(automatic.lines.join(''), name);
+  assert.deepEqual(layoutLabelText(name, 160, 40, measure).lines, [name]);
+  const explicit = layoutLabelText('ABCD EFGHIJKLMNO', 160, 100, measure, { fontSize: 24 });
+  assert.equal(explicit.fontSize, 24);
+  assert.equal(explicit.lines.join('').replaceAll(' ', ''), 'ABCDEFGHIJKLMNO');
+  const unicode = '👩🏽‍🔧e\u0301abcd';
+  assert.equal(layoutLabelText(unicode, 160, 60, measure).lines.join(''), unicode);
+  assert.deepEqual(layoutLabelText('', 160, 60, measure).lines, []);
 });

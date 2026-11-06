@@ -190,3 +190,6 @@ button.channel-row:hover{border-color:#8db8aa;background:#f0f7f3}
 #export-dialog.is-batch .export-preview-panel{display:none}
 @media(max-width:800px){#export-dialog{width:calc(100vw - 32px)}.export-layout{grid-template-columns:minmax(0,1fr);gap:20px}.export-preview-viewport{height:390px}}
 @media(max-width:480px){#export-dialog{padding:18px}.export-preview-toolbar{align-items:flex-start;flex-direction:column;gap:10px}.export-preview-viewport{height:340px}.export-preview-footer{align-items:flex-start;flex-direction:column}.export-preview-footer #export-preview-size{text-align:left}}
+
+.label-text-controls h3,.shared-label-controls>h3{font-size:12px;color:#20303d;margin:0 0 10px}
+.label-text-controls .source-note,.shared-label-controls>.source-note{font-size:10px;line-height:1.5;margin:8px 0 10px}

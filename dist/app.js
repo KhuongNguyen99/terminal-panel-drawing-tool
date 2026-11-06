@@ -7,7 +7,8 @@ import { findConnectorTagPosition, replaceWireWithTags } from './connector-tag-a
 import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, labelClipboardBounds, prepareLabelPaste } from './label-clipboard.js';
 import { createZip } from './zip.js';
 import { routePath } from './wire-path.js';
-import { wrapText, fitTextAttributes } from './text-layout.js';
+import { wrapText, fitTextAttributes, layoutLabelText } from './text-layout.js';
+import { labelFontSize, labelTextWidthPercent } from './model.js';
 import { loadStoredProject } from './project-storage.js';
 import { MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, RTD_CHANNEL_LAYOUT_REVISION, canAddToProject, positionInBounds, clampPosition } from './model.js';
 import { synchronizeWireLabelColors, setConnectedWireColor, setConductorColor } from './model.js';
@@ -42,6 +43,8 @@ function newWireLabel(name = 'Wire label', extra = {}) {
   return { id: makeId('label'), kind: 'wire-label', name, x: 0, y: 0, color: '#202631', ...extra };
 }
 const resizableLabel = node => ['device', 'tag', 'wire-label'].includes(node?.kind);
+const labelFormatProps = ['width', 'height', 'fontSize', 'textWidthPercent'];
+const selectedLabels = () => project.nodes.filter(n => selected.has(n.id) && resizableLabel(n));
 const labelWidth = node => node?.kind === 'tag' ? tagWidth(node) : deviceWidth(node);
 const labelHeight = node => node?.kind === 'tag' ? tagHeight(node) : deviceHeight(node);
 function labelSizeLimits(node) {
@@ -352,14 +355,15 @@ function tagMarkup(n, exporting = false) {
   const shape = side === 'left' ? `M0 ${h / 2} L14 0 H${w} V${h} H14 Z` : side === 'right' ? `M0 0 H${w - 14} L${w} ${h / 2} L${w - 14} ${h} H0 Z` : side === 'top' ? `M0 ${tip} H${w / 2 - 10} L${w / 2} 0 L${w / 2 + 10} ${tip} H${w} V${h} H0 Z` : `M0 0 H${w} V${h - tip} H${w / 2 + 10} L${w / 2} ${h} L${w / 2 - 10} ${h - tip} H0 Z`;
   const cx = w / 2 + (side === 'left' ? 5 : side === 'right' ? -5 : 0);
   const centerY = h / 2 + (side === 'top' ? tip / 2 : side === 'bottom' ? -tip / 2 : 0);
-  const nameY = centerY + 5;
+  const fontSize = labelFontSize(n) ?? 13;
+  const nameY = centerY + fontSize * .35;
   const name = tagName(n.name) || 'Unnamed tag';
   const textWidth = w - (['left', 'right'].includes(side) ? 34 : 24);
-  tagTextMeasure.font = '700 13px Arial';
-  const fit = tagTextMeasure.measureText(name).width > textWidth ? ` textLength="${textWidth}" lengthAdjust="spacingAndGlyphs"` : '';
+  tagTextMeasure.font = `700 ${fontSize}px Arial`;
+  const fit = fitTextAttributes(name, textWidth, text => tagTextMeasure.measureText(text).width, labelTextWidthPercent(n) / 100);
   let out = `<g class="connector-tag-node ${isSelected ? 'is-selected' : ''} ${isPeer ? 'is-linked' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-tag-node="true" role="button" aria-label="Connector tag ${esc(name)} · ${tagNumber(n)}" tabindex="0"`} transform="translate(${n.x} ${n.y})">`;
   if (!exporting && (isSelected || isPeer)) out += `<rect x="-7" y="-7" width="${width + 14}" height="${height + 14}" rx="9" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="${isSelected ? '5 3' : '2 4'}" opacity="${isSelected ? 1 : .6}" pointer-events="none"/>`;
-  out += `<g transform="scale(${width / w} ${height / h})"><title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text></g>`;
+  out += `<g transform="scale(${width / w} ${height / h})"><title>${esc(name)} · ${esc(tagLocation(n))}</title><path class="tag-body" d="${shape}" fill="${isSelected || isPeer ? '#edf9f5' : '#ffffff'}" stroke="#13877a" stroke-width="1.6" stroke-linejoin="round" ${exporting ? '' : 'data-drag-handle="true"'}/><text x="${cx}" y="${nameY}" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="700" fill="#20544d"${fit} pointer-events="none">${esc(name)}</text></g>`;
   const p = geo.ports[`${n.id}:connector`];
   if (p) out += portMarkup(p, p.x - n.x, p.y - n.y, exporting);
   if (isSelected && selected.size === 1) out += labelResizeMarkup(n, width, height);
@@ -369,32 +373,9 @@ function nodeMarkup(n, exporting = false, embedded = {}) {
   return n.kind === 'module' ? moduleMarkup(n, exporting, embedded) : n.kind === 'tag' ? tagMarkup(n, exporting) : n.kind === 'wire-label' ? wireLabelMarkup(n, exporting) : deviceMarkup(n, exporting);
 }
 const deviceTextMeasure = document.createElement('canvas').getContext('2d');
-function deviceNameLayout(name, width, height, { horizontalPadding = 82, verticalPadding = 34 } = {}) {
-  const availableWidth = width - horizontalPadding, availableHeight = height - verticalPadding;
-  let lines = [], fontSize = 15, lineHeight = 18, maxLines = 1;
-  for (; fontSize >= 10; fontSize--) {
-    deviceTextMeasure.font = `700 ${fontSize}px Arial`;
-    lineHeight = fontSize + 3;
-    maxLines = Math.max(1, Math.floor(availableHeight / lineHeight));
-    lines = []; let rest = name;
-    while (rest.length) {
-      let count = 1;
-      while (count < rest.length && deviceTextMeasure.measureText(rest.slice(0, count + 1)).width <= availableWidth) count++;
-      const space = rest.lastIndexOf(' ', count);
-      if (count < rest.length && space > count / 2) count = space;
-      lines.push(rest.slice(0, count)); rest = rest.slice(count).trimStart();
-    }
-    if (lines.length <= maxLines) break;
-  }
-  if (fontSize < 10) {
-    fontSize = 10; lineHeight = 13;
-    maxLines = Math.max(1, Math.floor(availableHeight / lineHeight));
-    const chunk = Math.ceil(name.length / maxLines);
-    lines = Array.from({ length: Math.ceil(name.length / chunk) }, (_, i) => name.slice(i * chunk, (i + 1) * chunk));
-  }
+function measureDeviceText(text, fontSize) {
   deviceTextMeasure.font = `700 ${fontSize}px Arial`;
-  return { lines, fontSize, lineHeight, availableWidth,
-    startY: 10 + availableHeight / 2 - (lines.length - 1) * lineHeight / 2 + fontSize * .35 };
+  return deviceTextMeasure.measureText(text).width;
 }
 function labelResizeMarkup(n, w, h) {
   const label = n.kind === 'tag' ? 'tag' : 'label';
@@ -409,11 +390,11 @@ function deviceMarkup(n, exporting = false) {
   const height = deviceHeight(n), width = deviceWidth(n);
   const h = Math.max(60, height), w = Math.max(160, width), rightCable = n.cableSide === 'right', badgeX = rightCable ? w - 58 : 0;
   const textCenter = rightCable ? (w - 58) / 2 : 58 + (w - 58) / 2;
-  const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Unnamed device', w, h);
+  const { lines, fontSize, lineHeight, startY, availableWidth, widthScale } = layoutLabelText(n.name || 'Unnamed device', w, h, measureDeviceText, { fontSize: labelFontSize(n), textWidthPercent: labelTextWidthPercent(n) });
   let out = `<g class="device-node ${!exporting && selected.has(n.id) ? 'is-selected' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-drag-handle="true"`} transform="translate(${n.x} ${n.y})">`;
   if (!exporting && selected.has(n.id)) out += `<rect x="-6" y="-6" width="${width + 12}" height="${height + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
   out += `<g transform="scale(${width / w} ${height / h})"><rect class="device-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/><path d="M${rightCable ? w - 58 : 58} 0 V${h}" stroke="#d8e1e7"/><rect x="${badgeX + 1}" y="1" width="56" height="${h - 2}" rx="4" fill="#eef5f7"/><text x="${badgeX + 29}" y="${h / 2 - 10}" text-anchor="middle" font-size="8" letter-spacing="1" font-weight="700" fill="#6a8190">CABLE</text><text class="cable-label" x="${badgeX + 29}" y="${h / 2 + 15}" text-anchor="middle" fill="#186783" font-weight="700" font-size="${String(n.cable).length > 4 ? 13 : 23}" ${String(n.cable).length > 5 ? 'textLength="43" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(n.cable || '—')}</text>`;
-  lines.forEach((line, i) => { out += `<text class="device-title" x="${textCenter}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
+  lines.forEach((line, i) => { out += `<text class="device-title" x="${textCenter}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${fitTextAttributes(line, availableWidth, text => measureDeviceText(text, fontSize), widthScale)} fill="#20303d">${esc(line)}</text>`; });
   out += `<text x="${textCenter}" y="${h - 11}" text-anchor="middle" font-size="9" fill="#728491">${n.wireCount}-wire cable</text></g>`;
   const c = CONDUCTORS[n.wireCount] || CONDUCTORS[2];
   c.forEach((conductor, i) => {
@@ -429,12 +410,12 @@ function wireLabelMarkup(n, exporting = false) {
   const w = deviceWidth(n), h = deviceHeight(n), color = safeColor(n.color);
   const isSelected = !exporting && selected.has(n.id);
   const textWidth = Math.max(160, w), textHeight = Math.max(60, h);
-  const { lines, fontSize, lineHeight, startY, availableWidth } = deviceNameLayout(n.name || 'Wire label', textWidth, textHeight, { horizontalPadding: 24, verticalPadding: 20 });
+  const { lines, fontSize, lineHeight, startY, availableWidth, widthScale } = layoutLabelText(n.name || 'Wire label', textWidth, textHeight, measureDeviceText, { horizontalPadding: 24, verticalPadding: 20, fontSize: labelFontSize(n), textWidthPercent: labelTextWidthPercent(n) });
   let out = `<g class="wire-label-node ${isSelected ? 'is-selected' : ''}" ${exporting ? '' : `data-node="${esc(n.id)}" data-wire-label-node="true" data-drag-handle="true" role="button" tabindex="0" aria-label="Wire label ${esc(n.name || 'Unnamed label')}"`} transform="translate(${n.x} ${n.y})">`;
   if (isSelected) out += `<rect x="-6" y="-6" width="${w + 12}" height="${h + 12}" rx="11" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>`;
   out += `<rect class="wire-label-box" width="${w}" height="${h}" rx="5" fill="#ffffff" stroke="#566775" stroke-width="1.3"/>`;
   out += `<g transform="scale(${w / textWidth} ${h / textHeight})">`;
-  lines.forEach((line, i) => { out += `<text class="wire-label-title" x="${textWidth / 2}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${deviceTextMeasure.measureText(line).width > availableWidth ? `textLength="${availableWidth}" lengthAdjust="spacingAndGlyphs"` : ''} fill="#20303d">${esc(line)}</text>`; });
+  lines.forEach((line, i) => { out += `<text class="wire-label-title" x="${textWidth / 2}" y="${startY + i * lineHeight}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="${fontSize}" ${fitTextAttributes(line, availableWidth, text => measureDeviceText(text, fontSize), widthScale)} fill="#20303d">${esc(line)}</text>`; });
   out += '</g>';
   for (const side of ['left', 'right']) {
     const x = side === 'left' ? 0 : w;
@@ -714,9 +695,58 @@ function moduleChannelsMarkup(n) {
     return device ? `<button class="channel-row" data-select-node="${esc(device.id)}">${label}</button>` : `<div class="channel-row is-spare">${label}</div>`;
   }).join('')}${source?.typeInferred ? `<p class="source-note">The sheet labels this module AI. The ${esc(t.label)} artwork is selected from your references using its channel count${source.channels.some(c => c.device) ? ' and device names' : ''}.</p>` : ''}</section>`;
 }
-function labelSizeControls(n) {
-  const limits = labelSizeLimits(n), name = n.kind === 'tag' ? 'Tag' : 'Label';
-  return `<div class="label-size-fields">${field('Width', `<div class="size-input">${textInput('width', labelWidth(n), `type="number" min="${limits.minWidth}" max="${limits.maxWidth}" step="1" aria-label="${name} width"`)}<span>px</span></div>`)}${field('Height', `<div class="size-input">${textInput('height', labelHeight(n), `type="number" min="${limits.minHeight}" max="${limits.maxHeight}" step="1" aria-label="${name} height"`)}<span>px</span></div>`)}</div><div class="size-help"><span>Or drag the resize handles.</span><button type="button" data-action="reset-label-size">Reset size</button></div>`;
+function labelFormatValue(node, prop) {
+  if (prop === 'width') return labelWidth(node);
+  if (prop === 'height') return labelHeight(node);
+  return prop === 'fontSize' ? labelFontSize(node) : labelTextWidthPercent(node);
+}
+function labelFormatInput(nodes, prop, name, min, max, unit, automatic = false) {
+  const values = nodes.map(node => labelFormatValue(node, prop));
+  const mixed = values.some(value => value !== values[0]);
+  const value = mixed ? '' : values[0] ?? '';
+  return field(name, `<div class="size-input">${textInput(prop, value, `type="number" min="${min}" max="${max}" step="1" placeholder="${mixed ? 'Mixed' : automatic ? 'Auto' : ''}" aria-label="${name}"`)}<span>${unit}</span></div>`);
+}
+function labelSizeControls(selection) {
+  const nodes = Array.isArray(selection) ? selection : [selection];
+  const limits = nodes.map(labelSizeLimits);
+  return `<div class="label-size-fields">${labelFormatInput(nodes, 'width', 'Width', Math.max(...limits.map(l => l.minWidth)), Math.min(...limits.map(l => l.maxWidth)), 'px')}${labelFormatInput(nodes, 'height', 'Height', Math.max(...limits.map(l => l.minHeight)), Math.min(...limits.map(l => l.maxHeight)), 'px')}</div><div class="size-help"><span>${nodes.length > 1 ? 'Applies to all selected labels.' : 'Or drag the resize handles.'}</span><button type="button" data-action="reset-label-size">Reset size</button></div>`;
+}
+function labelTextControls(selection) {
+  const nodes = Array.isArray(selection) ? selection : [selection];
+  return `<section class="label-text-controls"><h3>Text style</h3><div class="label-size-fields">${labelFormatInput(nodes, 'fontSize', 'Font size', 6, 72, 'px', true)}${labelFormatInput(nodes, 'textWidthPercent', 'Text width', 25, 200, '%')}</div><p class="source-note">Auto fits the font to the box. Below 100% makes letters narrower; above 100% makes them wider. Enlarge the box if a large font needs more room.</p><div class="size-help"><span>Applies to label names.</span><button type="button" data-action="reset-label-text">Reset text style</button></div></section>`;
+}
+function editLabelFormat(prop, raw, element, commit = false) {
+  const nodes = selectedLabels();
+  if (!nodes.length) return;
+  const blank = String(raw).trim() === '';
+  if (blank && prop !== 'fontSize') return;
+  if (blank && commit && textEdit?.element !== element) return;
+  const value = blank ? undefined : Number(raw);
+  if (!blank) {
+    if (!Number.isInteger(value)) return;
+    if (prop === 'fontSize' && (value < 6 || value > 72)) return;
+    if (prop === 'textWidthPercent' && (value < 25 || value > 200)) return;
+    if (['width', 'height'].includes(prop) && nodes.some(node => {
+      const limits = labelSizeLimits(node);
+      return value < limits[prop === 'width' ? 'minWidth' : 'minHeight'] || value > limits[prop === 'width' ? 'maxWidth' : 'maxHeight'];
+    })) return;
+  }
+  if (!textEdit || textEdit.element !== element) { commitTextEdit(); textEdit = { element, before: clone(project) }; }
+  const before = textEdit.before;
+  for (const node of nodes) {
+    if (blank) delete node[prop]; else node[prop] = value;
+  }
+  if (commit) commitTextEdit();
+  renderBoard(['width', 'height'].includes(prop) ? { baselineWires: before.wires } : { preserveRoutes: true });
+  saveLocal();
+}
+function syncLabelFormatInput(element) {
+  const nodes = selectedLabels(), prop = element.dataset.prop;
+  if (!nodes.length || !element.isConnected) return;
+  const values = nodes.map(node => labelFormatValue(node, prop));
+  const mixed = values.some(value => value !== values[0]);
+  element.value = mixed ? '' : values[0] ?? '';
+  element.placeholder = mixed ? 'Mixed' : prop === 'fontSize' && values[0] === undefined ? 'Auto' : '';
 }
 function renderInspector() {
   if (renderingInspector) return;
@@ -736,7 +766,7 @@ function renderInspector() {
   }
   if (n?.kind === 'tag') {
     const names = [...new Map(project.nodes.filter(tag => tag.kind === 'tag' && tag.id !== n.id && tagNameKey(tag.name)).map(tag => [tagNameKey(tag.name), tagName(tag.name)])).values()];
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTOR TAG</span><h2>Named connection</h2><p>Use the same name at both ends to replace a long wire.</p></div>${field('Tag name', textInput('name', n.name, 'maxlength="64" list="tag-name-options" placeholder="e.g. MOTOR_RUN"'))}<datalist id="tag-name-options">${names.map(name => `<option value="${esc(name)}"></option>`).join('')}</datalist>${labelSizeControls(n)}${field('Connection side', `<select data-prop="wireSide" aria-label="Connection side">${['left', 'right', 'top', 'bottom'].map(side => `<option value="${side}" ${n.wireSide === side ? 'selected' : ''}>${side[0].toUpperCase() + side.slice(1)} edge</option>`).join('')}</select>`)}<p class="tag-empty-note">Matching names share a connection. Letter case and surrounding spaces are ignored.</p><div id="tag-links">${tagConnectionsMarkup(n)}</div><div class="inspector-actions"><button class="secondary" data-action="add-matching-tag">Add matching tag</button><button class="danger" data-action="delete">Delete tag</button></div>`; return;
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">CONNECTOR TAG</span><h2>Named connection</h2><p>Use the same name at both ends to replace a long wire.</p></div>${field('Tag name', textInput('name', n.name, 'maxlength="64" list="tag-name-options" placeholder="e.g. MOTOR_RUN"'))}<datalist id="tag-name-options">${names.map(name => `<option value="${esc(name)}"></option>`).join('')}</datalist>${labelSizeControls(n)}${labelTextControls(n)}${field('Connection side', `<select data-prop="wireSide" aria-label="Connection side">${['left', 'right', 'top', 'bottom'].map(side => `<option value="${side}" ${n.wireSide === side ? 'selected' : ''}>${side[0].toUpperCase() + side.slice(1)} edge</option>`).join('')}</select>`)}<p class="tag-empty-note">Matching names share a connection. Letter case and surrounding spaces are ignored.</p><div id="tag-links">${tagConnectionsMarkup(n)}</div><div class="inspector-actions"><button class="secondary" data-action="add-matching-tag">Add matching tag</button><button class="danger" data-action="delete">Delete tag</button></div>`; return;
   }
   if (n?.kind === 'wire-label') {
     const color = safeColor(n.color);
@@ -746,11 +776,11 @@ function renderInspector() {
       const caption = `${side[0].toUpperCase() + side.slice(1)} side`;
       return opposite ? `<button class="tag-peer" data-select-node="${esc(opposite.nodeId)}"><strong>${caption}</strong><span class="tag-peer-meta">${esc(opposite.name)}</span></button>` : `<p class="tag-empty-note"><strong>${caption}</strong> · Not connected</p>`;
     }).join('');
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE LABEL</span><h2>Label on a wire</h2><p>One continuous wire through the left and right connection points.</p></div>${field('Label name', textInput('name', n.name, 'maxlength="100"'))}${labelSizeControls(n)}<div class="wire-label-color"><span class="wire-label-color-swatch" style="background:${color}"></span><span>Wire color <strong>${color.toUpperCase()}</strong></span></div><p class="tag-empty-note">Follows the connected cable. Change the color of either wire section to update the entire connection.</p><section class="tag-connections"><h3>Connected sides</h3>${sides}</section><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate label</button><button class="danger" data-action="delete">Delete label</button></div>`; return;
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">WIRE LABEL</span><h2>Label on a wire</h2><p>One continuous wire through the left and right connection points.</p></div>${field('Label name', textInput('name', n.name, 'maxlength="100"'))}${labelSizeControls(n)}${labelTextControls(n)}<div class="wire-label-color"><span class="wire-label-color-swatch" style="background:${color}"></span><span>Wire color <strong>${color.toUpperCase()}</strong></span></div><p class="tag-empty-note">Follows the connected cable. Change the color of either wire section to update the entire connection.</p><section class="tag-connections"><h3>Connected sides</h3>${sides}</section><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate label</button><button class="danger" data-action="delete">Delete label</button></div>`; return;
   }
   if (n?.kind === 'device') {
     const count = project.wires.filter(w => w.from.startsWith(n.id + ':')).length;
-    const sizeControls = labelSizeControls(n);
+    const sizeControls = labelSizeControls(n) + labelTextControls(n);
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">DEVICE PROPERTIES</span><h2>Device label</h2><p>${count} of ${n.wireCount} conductors connected</p></div>${assignmentMarkup(n)}${field('Device name', textInput('name', n.name, 'maxlength="100"'))}${field('Cable number', textInput('cable', n.cable, 'maxlength="24" placeholder="e.g. 17"'))}${sizeControls}${field('Conductors', `<select data-prop="wireCount"><option value="2" ${n.wireCount === 2 ? 'selected' : ''}>2-wire · black / white</option><option value="4" ${n.wireCount === 4 ? 'selected' : ''}>4-wire · red / black / white / green</option></select>`)}${field('Cable number position', `<div class="segmented"><button data-device-side="left" class="${n.cableSide === 'left' ? 'active' : ''}">Left</button><button data-device-side="right" class="${n.cableSide === 'right' ? 'active' : ''}">Right</button></div>`)}${field('Wires leave from', `<select data-prop="wireSide"><option value="left" ${n.wireSide === 'left' ? 'selected' : ''}>Left edge</option><option value="right" ${n.wireSide === 'right' ? 'selected' : ''}>Right edge</option></select>`)}<div class="conductor-list">${CONDUCTORS[n.wireCount].map(c => `<label class="conductor-row"><input type="color" data-conductor="${c.key}" value="${safeColor(n.colors?.[c.key], c.color)}"><span>${c.name}</span><small>${occupied(`${n.id}:${c.key}`) ? 'Connected' : 'Free'}</small></label>`).join('')}</div><div class="inspector-actions"><button class="secondary" data-action="flip-device">Flip label & ports</button><button class="secondary" data-action="duplicate">Duplicate</button><button class="danger" data-action="delete">Delete device</button></div>`; return;
   }
   if (n?.kind === 'module') {
@@ -759,7 +789,9 @@ function renderInspector() {
     root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
   }
   if (selected.size > 1) {
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div><div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;
+    const labels = selectedLabels();
+    const controls = labels.length ? `<section class="shared-label-controls"><h3>${labels.length} selected label${labels.length === 1 ? '' : 's'}</h3><p class="source-note">Changes apply to the selected labels. Mixed values stay separate until you edit a field.</p>${labelSizeControls(labels)}${labelTextControls(labels)}</section>` : '';
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div>${controls}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;
   }
   root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">YOUR WORKSPACE</span><h2>Make a connection</h2><p>Select an item to edit its details.</p></div><div class="guide-step"><b>1</b><div><strong>Place your hardware</strong><p>Add a module and a 2-wire or 4-wire device from the library.</p></div></div><div class="guide-step"><b>2</b><div><strong>Connect the dots</strong><p>Click a conductor, then a channel port. You can also drag between them.</p></div></div><div class="guide-step"><b>3</b><div><strong>Arrange and export</strong><p>Move components on the grid; their wires stay attached. Other wire paths stay in place while Auto-route is off.</p></div></div>${field('New wire thickness', `<select id="default-width"><option value="1.5" ${project.settings.defaultWidth === 1.5 ? 'selected' : ''}>1.5 px · fine</option><option value="2.5" ${project.settings.defaultWidth === 2.5 ? 'selected' : ''}>2.5 px · standard</option><option value="4" ${project.settings.defaultWidth === 4 ? 'selected' : ''}>4 px · bold</option><option value="6" ${project.settings.defaultWidth === 6 ? 'selected' : ''}>6 px · heavy</option></select>`)}<div class="instruction-card">Your project autosaves in this browser. Use <strong>Save project</strong> for a reusable backup.</div>`;
   } finally { renderingInspector = false; }
@@ -1153,15 +1185,8 @@ document.addEventListener('paste', event => {
 });
 
 function setNodeProperty(prop, value, element = null) {
+  if (labelFormatProps.includes(prop)) { editLabelFormat(prop, value, element, true); return; }
   const n = selectedNode(); if (!n) return;
-  if (['width', 'height'].includes(prop)) {
-    if (!resizableLabel(n) || String(value).trim() === '' || !Number.isFinite(Number(value))) return;
-    value = prop === 'width' ? labelWidth({ ...n, width: value }) : labelHeight({ ...n, height: value });
-    if (textEdit?.element === element) {
-      const before = textEdit.before;
-      n[prop] = value; commitTextEdit(); renderBoard({ baselineWires: before.wires }); saveLocal(); return;
-    }
-  }
   if (prop === 'wireCount') value = Number(value) === 4 ? 4 : 2;
   if (prop === 'name' && n.kind === 'tag') {
     value = tagName(value);
@@ -1190,8 +1215,7 @@ document.addEventListener('change', event => {
   if (el.id === 'wire-segment-position') { if (el.value.trim() === '') render(false); else moveSelectedSegment(Number(el.value)); return; }
   if (el.dataset.prop) {
     setNodeProperty(el.dataset.prop, el.value, el);
-    const n = selectedNode();
-    if (resizableLabel(n) && ['width', 'height'].includes(el.dataset.prop) && el.isConnected) el.value = el.dataset.prop === 'width' ? labelWidth(n) : labelHeight(n);
+    if (labelFormatProps.includes(el.dataset.prop)) syncLabelFormatInput(el);
     return;
   }
   if (el.dataset.wireProp) {
@@ -1229,16 +1253,7 @@ document.addEventListener('input', event => {
     renderBoard(false); saveLocal(); return;
   }
   const prop = el.dataset.prop;
-  if (['width', 'height'].includes(prop)) {
-    const n = selectedNode(), value = Number(el.value);
-    if (!resizableLabel(n) || el.value.trim() === '' || !Number.isFinite(value)) return;
-    const limits = labelSizeLimits(n);
-    const min = prop === 'width' ? limits.minWidth : limits.minHeight, max = prop === 'width' ? limits.maxWidth : limits.maxHeight;
-    if (value < min || value > max) return;
-    if (!textEdit || textEdit.element !== el) { commitTextEdit(); textEdit = { element: el, before: clone(project) }; }
-    n[prop] = prop === 'width' ? labelWidth({ ...n, width: value }) : labelHeight({ ...n, height: value });
-    renderBoard({ baselineWires: textEdit.before.wires }); saveLocal(); return;
-  }
+  if (labelFormatProps.includes(prop)) { editLabelFormat(prop, el.value, el); return; }
   if (['name', 'cable', 'rio', 'slot', 'topRowName', 'bottomRowName'].includes(prop) || el.id === 'project-title') {
     if (!textEdit || textEdit.element !== el) textEdit = { element: el, before: clone(project) };
     if (el.id === 'project-title') project.title = el.value.slice(0, 90) || 'Untitled wiring';
@@ -1260,10 +1275,9 @@ document.addEventListener('focusout', event => {
     if (el.value.trim() === '') render(false); else moveSelectedSegment(Number(el.value));
     return;
   }
-  if (['width', 'height'].includes(el.dataset.prop)) {
+  if (labelFormatProps.includes(el.dataset.prop)) {
     setNodeProperty(el.dataset.prop, el.value, el);
-    const n = selectedNode();
-    if (resizableLabel(n) && el.isConnected) el.value = el.dataset.prop === 'width' ? labelWidth(n) : labelHeight(n);
+    syncLabelFormatInput(el);
   }
   if (textEdit?.element !== event.target) return;
   commitTextEdit(); syncControls();
@@ -1515,7 +1529,8 @@ const actions = {
   'cancel-wire': cancelWire, delete: deleteSelection, duplicate: duplicateSelection, copy: copyLabels, paste: pasteFromClipboard,
   reconnect: () => { const w = project.wires.find(w => w.id === selectedWire); if (w) beginWire(w.from); },
   'flip-device': () => { const n = selectedNode(); if (n?.kind === 'device') change(() => { n.cableSide = n.cableSide === 'left' ? 'right' : 'left'; n.wireSide = n.wireSide === 'left' ? 'right' : 'left'; }); },
-  'reset-label-size': () => { const n = selectedNode(); if (resizableLabel(n)) change(() => { delete n.width; delete n.height; }, `Default ${n.kind === 'tag' ? 'tag' : 'label'} size restored`); },
+  'reset-label-size': () => { const nodes = selectedLabels(); if (nodes.length) change(() => { for (const n of nodes) { delete n.width; delete n.height; } }, 'Default label sizes restored'); },
+  'reset-label-text': () => { const nodes = selectedLabels(); if (nodes.length) change(() => { for (const n of nodes) { delete n.fontSize; delete n.textWidthPercent; } }, 'Automatic text style restored', { preserveRoutes: true }); },
   'reset-wire-route': () => { if (selectedWire) rerouteWires(selectedWire); },
   'full-schedule': () => {
     commitTextEdit();

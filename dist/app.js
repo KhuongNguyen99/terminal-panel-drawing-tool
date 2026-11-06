@@ -1,5 +1,5 @@
 import { MODULE_TYPES } from './modules.js';
-import { cableLabelColor } from './cable-colors.js';
+import { cableLabelColor, assignCableLabelColors } from './cable-colors.js';
 import { routeWithPreferences } from './independent-routing.js';
 import { RIO_SCHEDULE, SCHEDULE_SUMMARY, createScheduleProject } from './schedule.js';
 import { scheduleModuleIdForNode, focusNodesForModule } from './schedule-navigation.js';
@@ -30,6 +30,17 @@ let exportBusy = false;
 let exportPreviewEpoch = 0, exportPreviewTimer = 0, exportPreviewZoom = 1;
 let labelClipboard = null, clipboardLocalOnly = false, clipboardReadPending = false;
 const imageCache = new Map();
+let cableColors = new Map();
+let cableColorKey = '';
+function updateCableColors() {
+  const key = JSON.stringify([
+    project.nodes.map(node => [node.id, node.kind, node.cable, node.assignment?.moduleId]),
+    project.wires.map(wire => [wire.from, wire.to]),
+  ]);
+  if (key === cableColorKey) return;
+  cableColors = assignCableLabelColors(project);
+  cableColorKey = key;
+}
 
 function newDevice(wireCount = 2, extra = {}) {
   return { id: makeId('dev'), kind: 'device', name: 'New device', cable: '', wireCount, x: 40, y: 250, cableSide: 'left', wireSide: 'right', colors: {}, ...extra };
@@ -390,7 +401,7 @@ function labelResizeMarkup(n, w, h) {
   return handles.map(handle => `<g class="device-resize" data-resize="${handle.axis}" role="button" tabindex="0" aria-label="${handle.label}" transform="translate(${handle.x} ${handle.y})"><title>${handle.label} · drag, or use arrow keys</title><rect class="resize-hit" x="-7" y="-7" width="14" height="14" fill="transparent"/><rect class="resize-grip" x="-4" y="-4" width="8" height="8" rx="1.5" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/></g>`).join('');
 }
 function deviceMarkup(n, exporting = false) {
-  const cableColor = cableLabelColor(n.cable);
+  const cableColor = cableLabelColor(n.cable, cableColors);
   const height = deviceHeight(n), width = deviceWidth(n);
   const h = Math.max(60, height), w = Math.max(160, width), rightCable = n.cableSide === 'right', badgeX = rightCable ? w - 58 : 0;
   const textCenter = rightCable ? (w - 58) / 2 : 58 + (w - 58) / 2;
@@ -562,6 +573,7 @@ function rerouteWires(wireId = null) {
   notify(routing.diagnostics?.blocked ? 'Some paths still need room. Move the obstruction or adjust the affected wire.' : wireId ? 'Selected wire auto-routed · other wires kept in place' : 'All wires auto-routed · Undo restores the previous paths');
 }
 function renderBoard(reroute = false) {
+  updateCableColors();
   if (reroute) computeRoutes(typeof reroute === 'object' ? reroute : {}); else geo = geometry(project.nodes, MODULE_TYPES);
   const wires = selectedWire ? [...project.wires.filter(w => w.id !== selectedWire), ...project.wires.filter(w => w.id === selectedWire)] : project.wires;
   $('#wires-layer').innerHTML = wires.map(w => wireMarkup(w)).join('');
@@ -790,7 +802,7 @@ function renderInspector() {
   if (n?.kind === 'device') {
     const count = project.wires.filter(w => w.from.startsWith(n.id + ':')).length;
     const sizeControls = labelSizeControls(n) + labelTextControls(n);
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">DEVICE PROPERTIES</span><h2>Device label</h2><p>${count} of ${n.wireCount} conductors connected</p></div>${assignmentMarkup(n)}${field('Device name', textInput('name', n.name, 'maxlength="100"'))}${field('Cable number', textInput('cable', n.cable, 'maxlength="24" placeholder="e.g. 17"'))}<p class="source-note">Matching cable numbers share a box color. The six cable colors repeat automatically.</p>${sizeControls}${field('Conductors', `<select data-prop="wireCount"><option value="2" ${n.wireCount === 2 ? 'selected' : ''}>2-wire · black / white</option><option value="4" ${n.wireCount === 4 ? 'selected' : ''}>4-wire · red / black / white / green</option></select>`)}${field('Cable number position', `<div class="segmented"><button data-device-side="left" class="${n.cableSide === 'left' ? 'active' : ''}">Left</button><button data-device-side="right" class="${n.cableSide === 'right' ? 'active' : ''}">Right</button></div>`)}${field('Wires leave from', `<select data-prop="wireSide"><option value="left" ${n.wireSide === 'left' ? 'selected' : ''}>Left edge</option><option value="right" ${n.wireSide === 'right' ? 'selected' : ''}>Right edge</option></select>`)}<div class="conductor-list">${CONDUCTORS[n.wireCount].map(c => `<label class="conductor-row"><input type="color" data-conductor="${c.key}" value="${safeColor(n.colors?.[c.key], c.color)}"><span>${c.name}</span><small>${occupied(`${n.id}:${c.key}`) ? 'Connected' : 'Free'}</small></label>`).join('')}</div><div class="inspector-actions"><button class="secondary" data-action="flip-device">Flip label & ports</button><button class="secondary" data-action="duplicate">Duplicate</button><button class="danger" data-action="delete">Delete device</button></div>`; return;
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">DEVICE PROPERTIES</span><h2>Device label</h2><p>${count} of ${n.wireCount} conductors connected</p></div>${assignmentMarkup(n)}${field('Device name', textInput('name', n.name, 'maxlength="100"'))}${field('Cable number', textInput('cable', n.cable, 'maxlength="24" placeholder="e.g. 17"'))}<p class="source-note">Matching cable numbers share a box color. Colors are kept distinct within each module where possible, using six repeating colors.</p>${sizeControls}${field('Conductors', `<select data-prop="wireCount"><option value="2" ${n.wireCount === 2 ? 'selected' : ''}>2-wire · black / white</option><option value="4" ${n.wireCount === 4 ? 'selected' : ''}>4-wire · red / black / white / green</option></select>`)}${field('Cable number position', `<div class="segmented"><button data-device-side="left" class="${n.cableSide === 'left' ? 'active' : ''}">Left</button><button data-device-side="right" class="${n.cableSide === 'right' ? 'active' : ''}">Right</button></div>`)}${field('Wires leave from', `<select data-prop="wireSide"><option value="left" ${n.wireSide === 'left' ? 'selected' : ''}>Left edge</option><option value="right" ${n.wireSide === 'right' ? 'selected' : ''}>Right edge</option></select>`)}<div class="conductor-list">${CONDUCTORS[n.wireCount].map(c => `<label class="conductor-row"><input type="color" data-conductor="${c.key}" value="${safeColor(n.colors?.[c.key], c.color)}"><span>${c.name}</span><small>${occupied(`${n.id}:${c.key}`) ? 'Connected' : 'Free'}</small></label>`).join('')}</div><div class="inspector-actions"><button class="secondary" data-action="flip-device">Flip label & ports</button><button class="secondary" data-action="duplicate">Duplicate</button><button class="danger" data-action="delete">Delete device</button></div>`; return;
   }
   if (n?.kind === 'module') {
     const t = MODULE_TYPES[n.type];
@@ -1437,6 +1449,7 @@ function pngExportPlan(scope) {
   return { scope, nodes, wires, title, bounds: boundsOf(nodes, MODULE_TYPES, routesForNodes(nodes)) };
 }
 function svgForExport(plan, options, embedded) {
+  updateCableColors();
   const { nodes, wires, title: exportTitle, bounds: b } = plan;
   const { transparent, title, margin, scale } = options;
   const titleWidth = Math.max(1, b.width - 8);

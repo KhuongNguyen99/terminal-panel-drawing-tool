@@ -116,6 +116,8 @@ Module image provenance and reconstruction details are in `ASSET_NOTES.md`. The 
 
 Device label boxes with matching cable numbers automatically share a color. Red, blue, yellow, green, orange, and purple are assigned to keep different cables within each module distinct where possible. Matching cable numbers keep one color across modules and copied labels. Colors repeat when the six-color palette cannot satisfy every module. Assignment follows schedule membership and physical connections, including inline wire labels; canvas views and PNG exports use the same project-wide assignment. Colors are recalculated if cable numbers or module connections change. Blank cable numbers keep neutral boxes. These box colors help trace cables; conductor and wire colors retain their existing meaning.
 
+Select a device label and change **Box color** in Properties to choose red, blue, yellow, green, orange, or purple. The change applies to every label with that cable number, including other modules. You can also change several selected cable groups together. Choose **Automatic** to restore the automatic assignment. Manual colors take priority; other cable groups avoid them where possible. Colors persist in saved projects and copied labels.
+
 ## Formatting labels together
 
 Shift-click label boxes (or drag a selection around them), then use **Properties** to set their common **Width**, **Height**, **Font size**, or **Text width**. Different values appear as **Mixed** until you change that field. If modules are also selected, formatting applies to the selected labels only.

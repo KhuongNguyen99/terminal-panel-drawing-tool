@@ -1,4 +1,5 @@
 import { normalizeManualRoute } from './manual-routing.js';
+import { cableBoxColor } from './cable-colors.js';
 
 export const CONDUCTORS = {
   2: [{ key: 'black', name: 'Black', color: '#202631' }, { key: 'white', name: 'White', color: '#ffffff' }],
@@ -409,7 +410,9 @@ export function normalizeProject(input, types) {
     if (raw.height != null && raw.height !== '') size.height = deviceHeight({ ...raw, wireCount });
     const assignment = raw.assignment && typeof raw.assignment === 'object' && /^[a-zA-Z0-9_-]{1,90}$/.test(raw.assignment.moduleId || '') && Number.isInteger(raw.assignment.channel) && raw.assignment.channel >= 0 && raw.assignment.channel < 128
       ? { assignment: { moduleId: str(raw.assignment.moduleId, 90), channel: raw.assignment.channel, tag: str(raw.assignment.tag), statusTag: str(raw.assignment.statusTag), pinType: str(raw.assignment.pinType, 16) } } : {};
-    return { ...n, cable: str(raw.cable, 36), wireCount, cableSide: raw.cableSide === 'right' ? 'right' : 'left', wireSide: raw.wireSide === 'left' ? 'left' : 'right', colors, ...size, ...typography, ...assignment };
+    const boxColor = cableBoxColor(raw);
+    return { ...n, cable: str(raw.cable, 36), wireCount, cableSide: raw.cableSide === 'right' ? 'right' : 'left', wireSide: raw.wireSide === 'left' ? 'left' : 'right', colors, ...size, ...typography, ...assignment,
+      ...(boxColor === undefined ? {} : { boxColor }) };
   });
   const moduleIds = new Set(nodes.filter(n => n.kind === 'module').map(n => n.id));
   for (const n of nodes) if (n.assignment && !moduleIds.has(n.assignment.moduleId)) delete n.assignment;

@@ -6,6 +6,32 @@ export const CABLE_LABEL_COLORS = Object.freeze([
 
 const cableKey = cable => String(cable ?? '').trim().toUpperCase();
 
+export function cableBoxColor(node) {
+  const color = typeof node?.boxColor === 'string' ? node.boxColor.toLowerCase() : '';
+  return CABLE_LABEL_COLORS.includes(color) ? color : undefined;
+}
+
+/** Resolve conflicting imported overrides by stable item ID, so every matching label agrees. */
+export function cableBoxColorOverride(node, project) {
+  const key = cableKey(node.cable);
+  if (!key) return cableBoxColor(node);
+  const matching = project.nodes.filter(other => other.kind === 'device' &&
+    cableKey(other.cable) === key && cableBoxColor(other));
+  matching.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  return cableBoxColor(matching[0]);
+}
+
+/** Manual colors apply to the whole matching cable group; blank numbers stay independent. */
+export function setCableBoxColor(project, selectedIds, color) {
+  if (color !== '' && !cableBoxColor({ boxColor: color })) return false;
+  const selected = new Set(selectedIds), cables = new Set();
+  for (const node of project.nodes) if (node.kind === 'device' && selected.has(node.id) && cableKey(node.cable)) cables.add(cableKey(node.cable));
+  for (const node of project.nodes) if (node.kind === 'device' && (selected.has(node.id) || (cableKey(node.cable) && cables.has(cableKey(node.cable))))) {
+    if (color === '') delete node.boxColor; else node.boxColor = cableBoxColor({ boxColor: color });
+  }
+  return true;
+}
+
 /** Unassigned cables use a stable fallback; matching numbers always share a color. */
 export function cableLabelColor(cable, colors) {
   const key = cableKey(cable);
@@ -17,10 +43,13 @@ export function cableLabelColor(cable, colors) {
 }
 /** Prefer distinct cable colors per module; use the fewest conflicts when six are insufficient. */
 export function assignCableLabelColors(project) {
-  const colors = new Map(), neighbors = new Map();
+  const colors = new Map(), neighbors = new Map(), assigned = new Map();
   for (const node of project.nodes) if (node.kind === 'device' && cableKey(node.cable)) {
     colors.set(cableKey(node.cable), cableLabelColor(node.cable));
+    const override = cableBoxColorOverride(node, project);
+    if (override) assigned.set(cableKey(node.cable), override);
   }
+  for (const [cable, color] of assigned) colors.set(cable, color);
   for (const module of project.nodes.filter(node => node.kind === 'module')) {
     const cables = new Set(focusNodesForModule(module.id, project)
       .filter(node => node.kind === 'device').map(node => cableKey(node.cable)).filter(Boolean));
@@ -29,9 +58,9 @@ export function assignCableLabelColors(project) {
       for (const other of cables) if (other !== cable) neighbors.get(cable).add(other);
     }
   }
-  const remaining = new Set([...neighbors.keys()].sort());
-  const usedColors = new Map([...remaining].map(cable => [cable, new Set()]));
-  const assigned = new Map();
+  const remaining = new Set([...neighbors.keys()].filter(cable => !assigned.has(cable)).sort());
+  const usedColors = new Map([...remaining].map(cable => [cable,
+    new Set([...neighbors.get(cable)].filter(other => assigned.has(other)).map(other => assigned.get(other)))]));
   while (remaining.size) {
     let cable;
     for (const candidate of remaining) {

@@ -120,6 +120,8 @@ Shift-click label boxes (or drag a selection around them), then use **Properties
 
 Text width is the horizontal width of the letters: **100%** is normal, lower values condense the text, and higher values expand it. These controls format the names on device labels, wire labels, and connector tags. **Reset text style** restores automatic font sizing and normal text width. Manual font sizes stay fixed, so enlarge the box if larger letters need more room. Formatting survives undo/redo, Save/Open, copying, and PNG export.
 
+Select a module to adjust its **Title font size** in Properties, or Shift-click several modules to size their titles together. The setting applies to the module name and RIO/slot heading. Larger titles grow upward, with routing and PNG bounds following the title bar. **Reset title size** restores the original sizes.
+
 ## Source
 
 - `dist/app.js`: SVG editor interactions, inspector, persistence, and PNG export.

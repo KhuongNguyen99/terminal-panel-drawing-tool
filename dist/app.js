@@ -8,7 +8,7 @@ import { createLabelClipboard, serializeLabelClipboard, parseLabelClipboard, lab
 import { createZip } from './zip.js';
 import { routePath } from './wire-path.js';
 import { wrapText, fitTextAttributes, layoutLabelText } from './text-layout.js';
-import { labelFontSize, labelTextWidthPercent } from './model.js';
+import { labelFontSize, labelTextWidthPercent, moduleTitleFontSize, moduleHeader } from './model.js';
 import { loadStoredProject } from './project-storage.js';
 import { MAX_PROJECT_NODES, MAX_PROJECT_WIRES, POSITION_MIN, POSITION_MAX, RTD_CHANNEL_LAYOUT_REVISION, canAddToProject, positionInBounds, clampPosition } from './model.js';
 import { synchronizeWireLabelColors, setConnectedWireColor, setConductorColor } from './model.js';
@@ -43,8 +43,9 @@ function newWireLabel(name = 'Wire label', extra = {}) {
   return { id: makeId('label'), kind: 'wire-label', name, x: 0, y: 0, color: '#202631', ...extra };
 }
 const resizableLabel = node => ['device', 'tag', 'wire-label'].includes(node?.kind);
-const labelFormatProps = ['width', 'height', 'fontSize', 'textWidthPercent'];
+const labelFormatProps = ['width', 'height', 'fontSize', 'textWidthPercent', 'titleFontSize'];
 const selectedLabels = () => project.nodes.filter(n => selected.has(n.id) && resizableLabel(n));
+const selectedModules = () => project.nodes.filter(n => selected.has(n.id) && n.kind === 'module');
 const labelWidth = node => node?.kind === 'tag' ? tagWidth(node) : deviceWidth(node);
 const labelHeight = node => node?.kind === 'tag' ? tagHeight(node) : deviceHeight(node);
 function labelSizeLimits(node) {
@@ -282,20 +283,21 @@ function calloutArrow(points, appearance = null) {
 
 function moduleMarkup(n, exporting = false, embedded = {}) {
   const t = MODULE_TYPES[n.type], b = t.body;
-  const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
+  const header = moduleHeader(n, t);
+  const requestedSize = moduleTitleFontSize(n), nameSize = requestedSize ?? 13, instanceSize = requestedSize ?? 16;
   const headerCenterY = header.y + header.height / 2;
   const instance = [n.rio, n.slot !== '' ? `Slot ${n.slot}` : ''].filter(Boolean).join(' · ');
   const name = n.name || t.label, available = header.width - 34 - (instance ? 12 : 0);
-  const nameWidth = Math.min(headerTextWidth(name, 13), Math.max(available * .4, available - headerTextWidth(instance, 16)));
-  const nameFit = fitTextAttributes(name, nameWidth, text => headerTextWidth(text, 13));
-  const instanceFit = fitTextAttributes(instance, available - nameWidth, text => headerTextWidth(text, 16));
+  const nameWidth = Math.min(headerTextWidth(name, nameSize), Math.max(available * .4, available - headerTextWidth(instance, instanceSize)));
+  const nameFit = fitTextAttributes(name, nameWidth, text => headerTextWidth(text, nameSize));
+  const instanceFit = fitTextAttributes(instance, available - nameWidth, text => headerTextWidth(text, instanceSize));
   const selectedClass = !exporting && selected.has(n.id) ? 'is-selected' : '';
   let out = `<g class="module-node ${selectedClass}" ${exporting ? '' : `data-node="${esc(n.id)}"`} transform="translate(${n.x} ${n.y})">`;
   let pairLabels = '';
   const selectionTop = Math.min(0, header.y) - 8;
   if (!exporting) out += `<rect class="selection-ring" x="-8" y="${selectionTop}" width="${t.width + 16}" height="${Math.max(t.height, header.y + header.height) - selectionTop + 8}" rx="12" fill="none" stroke="#0d9488" stroke-width="1.5" stroke-dasharray="6 4" opacity="${selectedClass ? 1 : 0}" pointer-events="none"/>`;
   out += `<image href="${esc(embedded[n.type] || t.image)}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" preserveAspectRatio="none" ${exporting ? '' : 'data-drag-handle="true"'} />`;
-  out += `<g class="module-header" ${exporting ? '' : 'data-drag-handle="true"'}><title>${esc([name, instance].filter(Boolean).join(' · '))}</title><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + 5}" fill="#20303d" font-size="13" font-weight="700"${nameFit}>${esc(name)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + 5}" text-anchor="end" fill="#20303d" font-size="16" font-weight="700"${instanceFit}>${esc(instance)}</text></g>`;
+  out += `<g class="module-header" font-family="Arial, sans-serif" ${exporting ? '' : 'data-drag-handle="true"'}><title>${esc([name, instance].filter(Boolean).join(' · '))}</title><rect x="${header.x}" y="${header.y}" width="${header.width}" height="${header.height}" rx="${Math.min(7, header.height / 4)}" fill="#ffffff" stroke="#e2e8ed"/><rect x="${header.x + 10}" y="${headerCenterY - 6}" width="5" height="12" rx="2" fill="#0d9488"/><text x="${header.x + 24}" y="${headerCenterY + (requestedSize === undefined ? 5 : nameSize * .35)}" fill="#20303d" font-size="${nameSize}" font-weight="700"${nameFit}>${esc(name)}</text><text class="module-instance" x="${header.x + header.width - 10}" y="${headerCenterY + (requestedSize === undefined ? 5 : instanceSize * .35)}" text-anchor="end" fill="#20303d" font-size="${instanceSize}" font-weight="700"${instanceFit}>${esc(instance)}</text></g>`;
   for (const p of t.ports) {
     if (p.calloutPoints?.length > 1) {
       const label = modulePortLabel(n, p);
@@ -696,6 +698,7 @@ function moduleChannelsMarkup(n) {
   }).join('')}${source?.typeInferred ? `<p class="source-note">The sheet labels this module AI. The ${esc(t.label)} artwork is selected from your references using its channel count${source.channels.some(c => c.device) ? ' and device names' : ''}.</p>` : ''}</section>`;
 }
 function labelFormatValue(node, prop) {
+  if (prop === 'titleFontSize') return moduleTitleFontSize(node);
   if (prop === 'width') return labelWidth(node);
   if (prop === 'height') return labelHeight(node);
   return prop === 'fontSize' ? labelFontSize(node) : labelTextWidthPercent(node);
@@ -715,16 +718,19 @@ function labelTextControls(selection) {
   const nodes = Array.isArray(selection) ? selection : [selection];
   return `<section class="label-text-controls"><h3>Text style</h3><div class="label-size-fields">${labelFormatInput(nodes, 'fontSize', 'Font size', 6, 72, 'px', true)}${labelFormatInput(nodes, 'textWidthPercent', 'Text width', 25, 200, '%')}</div><p class="source-note">Auto fits the font to the box. Below 100% makes letters narrower; above 100% makes them wider. Enlarge the box if a large font needs more room.</p><div class="size-help"><span>Applies to label names.</span><button type="button" data-action="reset-label-text">Reset text style</button></div></section>`;
 }
+function moduleTitleControls(nodes) {
+  return `<section class="label-text-controls module-title-controls"><h3>Module titles</h3>${labelFormatInput(nodes, 'titleFontSize', 'Title font size', 6, 72, 'px', true)}<p class="source-note">Applies to the module name and RIO / slot heading. The title bar grows to fit larger text.</p><div class="size-help"><span>${nodes.length} selected module${nodes.length === 1 ? '' : 's'}</span><button type="button" data-action="reset-module-title">Reset title size</button></div></section>`;
+}
 function editLabelFormat(prop, raw, element, commit = false) {
-  const nodes = selectedLabels();
+  const nodes = prop === 'titleFontSize' ? selectedModules() : selectedLabels();
   if (!nodes.length) return;
   const blank = String(raw).trim() === '';
-  if (blank && prop !== 'fontSize') return;
+  if (blank && !['fontSize', 'titleFontSize'].includes(prop)) return;
   if (blank && commit && textEdit?.element !== element) return;
   const value = blank ? undefined : Number(raw);
   if (!blank) {
     if (!Number.isInteger(value)) return;
-    if (prop === 'fontSize' && (value < 6 || value > 72)) return;
+    if (['fontSize', 'titleFontSize'].includes(prop) && (value < 6 || value > 72)) return;
     if (prop === 'textWidthPercent' && (value < 25 || value > 200)) return;
     if (['width', 'height'].includes(prop) && nodes.some(node => {
       const limits = labelSizeLimits(node);
@@ -737,16 +743,17 @@ function editLabelFormat(prop, raw, element, commit = false) {
     if (blank) delete node[prop]; else node[prop] = value;
   }
   if (commit) commitTextEdit();
-  renderBoard(['width', 'height'].includes(prop) ? { baselineWires: before.wires } : { preserveRoutes: true });
+  renderBoard(['width', 'height', 'titleFontSize'].includes(prop) ? { baselineWires: before.wires } : { preserveRoutes: true });
   saveLocal();
 }
 function syncLabelFormatInput(element) {
-  const nodes = selectedLabels(), prop = element.dataset.prop;
+  const prop = element.dataset.prop;
+  const nodes = prop === 'titleFontSize' ? selectedModules() : selectedLabels();
   if (!nodes.length || !element.isConnected) return;
   const values = nodes.map(node => labelFormatValue(node, prop));
   const mixed = values.some(value => value !== values[0]);
   element.value = mixed ? '' : values[0] ?? '';
-  element.placeholder = mixed ? 'Mixed' : prop === 'fontSize' && values[0] === undefined ? 'Auto' : '';
+  element.placeholder = mixed ? 'Mixed' : ['fontSize', 'titleFontSize'].includes(prop) && values[0] === undefined ? 'Auto' : '';
 }
 function renderInspector() {
   if (renderingInspector) return;
@@ -786,12 +793,12 @@ function renderInspector() {
   if (n?.kind === 'module') {
     const t = MODULE_TYPES[n.type];
     const rowNames = n.type === 'DIN_RESISTOR' ? `<section class="terminal-row-names"><h3>Connector row names</h3>${field('Top row name', textInput('topRowName', terminalRowName(n, 'top'), 'maxlength="24" placeholder="e.g. TB10"'))}${field('Bottom row name', textInput('bottomRowName', terminalRowName(n, 'bottom'), 'maxlength="24" placeholder="e.g. TB11"'))}<p class="source-note">Each row uses its name followed by .1 through .10. One connection point represents both holes.</p></section>` : '';
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">MODULE PROPERTIES</span><h2>${esc(t.label)}</h2><p>${esc(t.subtitle || '')}</p></div>${field('Display name', textInput('name', n.name, 'maxlength="70"'))}${moduleTitleControls([n])}${field('RIO / location', textInput('rio', n.rio, 'maxlength="35"'))}${field('Slot', textInput('slot', n.slot, 'maxlength="20" placeholder="e.g. 5"'))}${rowNames}<div class="module-description">${esc(t.description || '')}</div><div class="terminal-count"><strong>${t.ports.length}</strong> connection points</div>${moduleChannelsMarkup(n)}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate module</button><button class="danger" data-action="delete">Delete module</button></div>`; return;
   }
   if (selected.size > 1) {
-    const labels = selectedLabels();
+    const labels = selectedLabels(), modules = selectedModules();
     const controls = labels.length ? `<section class="shared-label-controls"><h3>${labels.length} selected label${labels.length === 1 ? '' : 's'}</h3><p class="source-note">Changes apply to the selected labels. Mixed values stay separate until you edit a field.</p>${labelSizeControls(labels)}${labelTextControls(labels)}</section>` : '';
-    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div>${controls}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;
+    root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">SELECTION</span><h2>${selected.size} items</h2><p>Drag any selected item to move the group. Arrow keys nudge by one grid step.</p></div>${modules.length ? moduleTitleControls(modules) : ''}${controls}<div class="inspector-actions"><button class="secondary" data-action="duplicate">Duplicate selected</button><button class="danger" data-action="delete">Delete selected</button></div>`; return;
   }
   root.innerHTML = `<div class="inspector-heading"><span class="eyebrow">YOUR WORKSPACE</span><h2>Make a connection</h2><p>Select an item to edit its details.</p></div><div class="guide-step"><b>1</b><div><strong>Place your hardware</strong><p>Add a module and a 2-wire or 4-wire device from the library.</p></div></div><div class="guide-step"><b>2</b><div><strong>Connect the dots</strong><p>Click a conductor, then a channel port. You can also drag between them.</p></div></div><div class="guide-step"><b>3</b><div><strong>Arrange and export</strong><p>Move components on the grid; their wires stay attached. Other wire paths stay in place while Auto-route is off.</p></div></div>${field('New wire thickness', `<select id="default-width"><option value="1.5" ${project.settings.defaultWidth === 1.5 ? 'selected' : ''}>1.5 px · fine</option><option value="2.5" ${project.settings.defaultWidth === 2.5 ? 'selected' : ''}>2.5 px · standard</option><option value="4" ${project.settings.defaultWidth === 4 ? 'selected' : ''}>4 px · bold</option><option value="6" ${project.settings.defaultWidth === 6 ? 'selected' : ''}>6 px · heavy</option></select>`)}<div class="instruction-card">Your project autosaves in this browser. Use <strong>Save project</strong> for a reusable backup.</div>`;
   } finally { renderingInspector = false; }
@@ -986,8 +993,9 @@ function findFreePosition(node, desired) {
   desired = { x: clampPosition(snapped(desired.x)), y: clampPosition(snapped(desired.y)) };
   const type = node.kind === 'module' ? MODULE_TYPES[node.type] : null;
   const size = nodeSize(node), w = size.width;
-  const top = type ? Math.max(0, -(type.header?.y ?? -36)) : 0;
-  const h = type ? Math.max(type.height, type.header ? type.header.y + type.header.height : 0) + top : size.height;
+  const header = type && (moduleTitleFontSize(node) === undefined ? type.header : moduleHeader(node, type));
+  const top = type ? Math.max(0, -(header?.y ?? -36)) : 0;
+  const h = type ? Math.max(type.height, header ? header.y + header.height : 0) + top : size.height;
   const obstacles = geometry(project.nodes, MODULE_TYPES).obstacles;
   const free = (x, y) => positionInBounds(x, y) && obstacles.every(r => x + w + 45 < r.x || x - 45 > r.x + r.width || y - top + h + 45 < r.y || y - top - 45 > r.y + r.height);
   const candidates = [];
@@ -1529,6 +1537,7 @@ const actions = {
   'cancel-wire': cancelWire, delete: deleteSelection, duplicate: duplicateSelection, copy: copyLabels, paste: pasteFromClipboard,
   reconnect: () => { const w = project.wires.find(w => w.id === selectedWire); if (w) beginWire(w.from); },
   'flip-device': () => { const n = selectedNode(); if (n?.kind === 'device') change(() => { n.cableSide = n.cableSide === 'left' ? 'right' : 'left'; n.wireSide = n.wireSide === 'left' ? 'right' : 'left'; }); },
+  'reset-module-title': () => { const nodes = selectedModules(); if (nodes.length) change(() => { for (const n of nodes) delete n.titleFontSize; }, 'Default module title sizes restored'); },
   'reset-label-size': () => { const nodes = selectedLabels(); if (nodes.length) change(() => { for (const n of nodes) { delete n.width; delete n.height; } }, 'Default label sizes restored'); },
   'reset-label-text': () => { const nodes = selectedLabels(); if (nodes.length) change(() => { for (const n of nodes) { delete n.fontSize; delete n.textWidthPercent; } }, 'Automatic text style restored', { preserveRoutes: true }); },
   'reset-wire-route': () => { if (selectedWire) rerouteWires(selectedWire); },

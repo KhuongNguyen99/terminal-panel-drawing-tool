@@ -67,6 +67,14 @@ function labelInteger(value, min, max) {
 }
 export const labelFontSize = node => labelInteger(node?.fontSize, 6, 72);
 export const labelTextWidthPercent = node => labelInteger(node?.textWidthPercent, 25, 200) ?? 100;
+export const moduleTitleFontSize = node => labelInteger(node?.titleFontSize, 6, 72);
+export function moduleHeader(node, type) {
+  const base = type.header || { x: 0, y: -34, width: type.width, height: 32 };
+  const fontSize = moduleTitleFontSize(node);
+  if (fontSize === undefined) return base;
+  const height = Math.max(base.height, Math.ceil(fontSize * 1.2 + 12));
+  return { ...base, y: base.y + base.height - height, height };
+}
 export function devicePortY(node, index) {
   const count = Number(node?.wireCount) === 4 ? 4 : 2;
   const height = deviceHeight(node);
@@ -296,6 +304,7 @@ export function geometry(nodes, types) {
         // A detached title is an ordinary routing obstruction, not part of the
         // port owner's escape exception. Wires must route around that title.
         type.routingObstacles.forEach((r, index) => {
+          if (r.avoidPortEscape && moduleTitleFontSize(node) !== undefined) r = { ...r, ...moduleHeader(node, type) };
           const id = index || r.avoidPortEscape ? `${node.id}-obstacle-${index}` : node.id;
           obstacles.push({
             id, nodeId: r.avoidPortEscape ? id : node.id,
@@ -305,7 +314,8 @@ export function geometry(nodes, types) {
       } else {
         const leftEdge = Math.min(...type.ports.map(port => port.x));
         const rightEdge = Math.max(...type.ports.map(port => port.x));
-        const header = type.header || { x: 0, y: -36, width: type.width, height: 36 };
+        const header = moduleTitleFontSize(node) === undefined
+          ? type.header || { x: 0, y: -36, width: type.width, height: 36 } : moduleHeader(node, type);
         obstacles.push(
           { id: `${node.id}-header`, nodeId: node.id, x: node.x + header.x, y: node.y + header.y, width: header.width, height: header.height },
           { id: node.id, nodeId: node.id, x: node.x + leftEdge, y: node.y, width: rightEdge - leftEdge, height: type.height },
@@ -386,7 +396,9 @@ export function normalizeProject(input, types) {
       if (raw.type === 'DIN_TERMINAL' && n.name.trim().toLowerCase() === 'din rail terminal block') n.name = types[raw.type].label;
       const scheduleId = typeof raw.scheduleId === 'string' && /^[a-zA-Z0-9_-]{1,90}$/.test(raw.scheduleId) ? { scheduleId: raw.scheduleId } : {};
       const rowNames = raw.type === 'DIN_RESISTOR' ? { topRowName: terminalRowName(raw, 'top'), bottomRowName: terminalRowName(raw, 'bottom') } : {};
-      return { ...n, type: raw.type, slot: str(raw.slot, 40), rio: str(raw.rio, 40), ...scheduleId, ...rowNames };
+      const titleFontSize = moduleTitleFontSize(raw);
+      const titleStyle = titleFontSize === undefined ? {} : { titleFontSize };
+      return { ...n, type: raw.type, slot: str(raw.slot, 40), rio: str(raw.rio, 40), ...scheduleId, ...rowNames, ...titleStyle };
     }
     const wireCount = Number(raw.wireCount) === 4 ? 4 : 2;
     const colors = {};
@@ -442,7 +454,7 @@ export function boundsOf(nodes, types, routes = {}) {
   for (const n of nodes) {
     const t = n.kind === 'module' ? types[n.type] : null;
     if (t) {
-      const header = t.header || { x: 0, y: -34, width: t.width, height: 32 };
+      const header = moduleHeader(n, t);
       include(n.x + Math.min(-9, header.x - 9), n.y + Math.min(-9, header.y - 8));
       include(n.x + Math.max(t.width + 9, header.x + header.width + 9), n.y + Math.max(t.height + 9, header.y + header.height + 8));
     } else {
